@@ -210,9 +210,10 @@ CSS;
 					</div>
 				</div>
 
-				<div class="pc-card">
-					<h3><?php esc_html_e( 'Soul', 'pressocampus' ); ?></h3>
-					<div class="pc-soul-status">
+			<div class="pc-card">
+				<h3><?php esc_html_e( 'Soul', 'pressocampus' ); ?></h3>
+				<p style="font-size:13px;color:#555;margin:0 0 12px"><?php esc_html_e( 'Your Soul is a persistent note about you that your AI reads at the start of every session — like a cover letter for your memories.', 'pressocampus' ); ?></p>
+				<div class="pc-soul-status">
 					<?php if ( $soul_status === 'empty' ) : ?>
 						<?php esc_html_e( 'Your soul is empty — connect your AI to set it up.', 'pressocampus' ); ?>
 					<?php else : ?>
@@ -258,9 +259,17 @@ CSS;
 					<?php if ( empty( $clients ) ) : ?>
 						<p style="font-size:13px;color:#888;margin:0"><?php esc_html_e( 'No AI clients connected yet.', 'pressocampus' ); ?></p>
 					<?php else : ?>
-						<table class="pc-clients-table">
-							<tbody>
-							<?php foreach ( $clients as $client ) : ?>
+					<table class="pc-clients-table">
+						<thead>
+							<tr>
+								<th><?php esc_html_e( 'App', 'pressocampus' ); ?></th>
+								<th><?php esc_html_e( 'Connected', 'pressocampus' ); ?></th>
+								<th><?php esc_html_e( 'Last used', 'pressocampus' ); ?></th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody>
+						<?php foreach ( $clients as $client ) : ?>
 								<tr>
 									<td><strong><?php echo esc_html( $client['name'] ); ?></strong></td>
 									<td style="color:#888">
@@ -308,23 +317,25 @@ CSS;
 
 						<div class="pc-setting-row">
 							<label for="pc-cors-origins"><?php esc_html_e( 'Allowed CORS Origins', 'pressocampus' ); ?></label>
-							<textarea id="pc-cors-origins" name="cors_origins" class="pc-input" rows="4" style="height:auto;font-family:monospace"><?php echo esc_textarea( $settings['cors_origins'] ?? '' ); ?></textarea>
-							<div class="description"><?php esc_html_e( 'One origin per line. Leave blank to allow any origin. Example: https://claude.ai', 'pressocampus' ); ?></div>
+						<textarea id="pc-cors-origins" name="cors_origins" class="pc-input" rows="4" style="height:auto;font-family:monospace"><?php echo esc_textarea( $settings['cors_origins'] ?? '' ); ?></textarea>
+						<div class="description"><?php esc_html_e( 'One origin per line. Leave blank only if your AI client does not send an Origin header — allowing all origins is permissive. Example: https://claude.ai', 'pressocampus' ); ?></div>
 						</div>
 					</div>
 
 					<div class="pc-card">
 						<h3><?php esc_html_e( 'Rate Limits', 'pressocampus' ); ?></h3>
 
-						<div class="pc-row">
-							<label for="pc-rate-reads"><?php esc_html_e( 'Reads per minute', 'pressocampus' ); ?></label>
-							<input id="pc-rate-reads" name="rate_limit_reads" type="number" min="1" max="1000" class="pc-input" style="max-width:100px" value="<?php echo esc_attr( $settings['rate_limit_reads'] ?? 60 ); ?>" />
-						</div>
+					<div class="pc-setting-row">
+						<label for="pc-rate-reads"><?php esc_html_e( 'Reads per minute', 'pressocampus' ); ?></label>
+						<input id="pc-rate-reads" name="rate_limit_reads" type="number" min="1" max="1000" class="pc-input" style="max-width:100px" value="<?php echo esc_attr( $settings['rate_limit_reads'] ?? 60 ); ?>" />
+						<div class="description"><?php esc_html_e( 'Requests beyond this limit receive a 429 error and your AI will pause briefly before retrying.', 'pressocampus' ); ?></div>
+					</div>
 
-						<div class="pc-row">
-							<label for="pc-rate-writes"><?php esc_html_e( 'Writes per minute', 'pressocampus' ); ?></label>
-							<input id="pc-rate-writes" name="rate_limit_writes" type="number" min="1" max="1000" class="pc-input" style="max-width:100px" value="<?php echo esc_attr( $settings['rate_limit_writes'] ?? 30 ); ?>" />
-						</div>
+					<div class="pc-setting-row">
+						<label for="pc-rate-writes"><?php esc_html_e( 'Writes per minute', 'pressocampus' ); ?></label>
+						<input id="pc-rate-writes" name="rate_limit_writes" type="number" min="1" max="1000" class="pc-input" style="max-width:100px" value="<?php echo esc_attr( $settings['rate_limit_writes'] ?? 30 ); ?>" />
+						<div class="description"><?php esc_html_e( 'Requests beyond this limit receive a 429 error and your AI will pause briefly before retrying.', 'pressocampus' ); ?></div>
+					</div>
 					</div>
 
 					<div class="pc-card">
@@ -367,13 +378,14 @@ CSS;
 				<div class="pc-card">
 					<h3><?php esc_html_e( 'Data', 'pressocampus' ); ?></h3>
 
-					<div class="pc-row">
-						<a href="<?php echo esc_url( admin_url( 'admin-ajax.php?action=pressocampus_export_brain&_wpnonce=' . wp_create_nonce( 'pressocampus_export_brain' ) ) ); ?>"
-							class="pc-btn secondary" download>
-							<?php esc_html_e( 'Download Brain', 'pressocampus' ); ?>
-						</a>
-						<span style="font-size:12px;color:#888"><?php esc_html_e( 'All your memories as JSON (or ZIP if available).', 'pressocampus' ); ?></span>
-					</div>
+				<div class="pc-row">
+					<a href="<?php echo esc_url( admin_url( 'admin-ajax.php?action=pressocampus_export_brain&_wpnonce=' . wp_create_nonce( 'pressocampus_export_brain' ) ) ); ?>"
+						class="pc-btn secondary" download
+						title="<?php esc_attr_e( 'Export all memories as JSON or ZIP', 'pressocampus' ); ?>">
+						<?php esc_html_e( 'Download Brain', 'pressocampus' ); ?>
+						<span style="font-weight:400;font-size:12px;opacity:.8"><?php esc_html_e( '(exports all memories as JSON)', 'pressocampus' ); ?></span>
+					</a>
+				</div>
 
 					<hr class="pc-section-divider">
 
@@ -481,12 +493,27 @@ CSS;
 						</tr>
 					</thead>
 					<tbody>
+						<?php
+						$action_labels = array(
+							'remember'                => __( 'Saved memory', 'pressocampus' ),
+							'forget'                  => __( 'Deleted memory', 'pressocampus' ),
+							'update_memory'           => __( 'Updated memory', 'pressocampus' ),
+							'update_soul'             => __( 'Updated soul', 'pressocampus' ),
+							'update_soul_section'     => __( 'Updated soul section', 'pressocampus' ),
+							'resources_list'          => __( 'Listed memories', 'pressocampus' ),
+							'resources_read'          => __( 'Read memory', 'pressocampus' ),
+							'oauth_client_registered' => __( 'App registered', 'pressocampus' ),
+							'oauth_authorized'        => __( 'App connected', 'pressocampus' ),
+							'oauth_token_issued'      => __( 'Token issued', 'pressocampus' ),
+						);
+						?>
 						<?php foreach ( $items as $row ) : ?>
 							<tr>
 								<td><?php echo esc_html( $row['oauth_client_name'] ); ?></td>
 								<td>
-									<span class="pc-badge <?php echo esc_attr( $row['action'] ); ?>">
-										<?php echo esc_html( $row['action'] ); ?>
+									<span class="pc-badge <?php echo esc_attr( $row['action'] ); ?>"
+										title="<?php echo esc_attr( $row['action'] ); ?>">
+										<?php echo esc_html( $action_labels[ $row['action'] ] ?? $row['action'] ); ?>
 									</span>
 								</td>
 								<td>
@@ -846,10 +873,27 @@ CSS;
 		$clients_table = $wpdb->prefix . 'pressocampus_oauth_clients';
 		$tokens_table  = $wpdb->prefix . 'pressocampus_oauth_tokens';
 
-		// Delete all tokens for this client first, then the client record.
-		$wpdb->delete( $tokens_table, array( 'client_id' => $client_id ), array( '%s' ) );
+		$current_user_id = get_current_user_id();
 
-		$deleted = $wpdb->delete( $clients_table, array( 'id' => $client_id ), array( '%s' ) );
+		// Delete all tokens for this client first, then the client record.
+		// user_id constraint prevents an admin revoking another user's client on multi-user sites.
+		$wpdb->delete(
+			$tokens_table,
+			array(
+				'client_id' => $client_id,
+				'user_id'   => $current_user_id,
+			),
+			array( '%s', '%d' )
+		);
+
+		$deleted = $wpdb->delete(
+			$clients_table,
+			array(
+				'id'      => $client_id,
+				'user_id' => $current_user_id,
+			),
+			array( '%s', '%d' )
+		);
 
 		if ( $deleted === false ) {
 			wp_send_json_error( array( 'message' => __( 'Database error while revoking client.', 'pressocampus' ) ) );

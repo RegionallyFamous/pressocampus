@@ -96,13 +96,13 @@ class Onboarding {
 				continue;
 			}
 
-			$reauth_url = rest_url( 'pressocampus/v1/oauth/authorize' );
+			$manage_url = admin_url( 'admin.php?page=pressocampus&tab=advanced' );
 
 			echo '<div class="notice notice-warning is-dismissible"><p>';
 			printf(
 				wp_kses(
-					/* translators: 1: AI/client name, 2: days remaining, 3: re-auth URL */
-					__( 'Your <strong>%1$s</strong> connection to Pressocampus expires in %2$d days. <a href="%3$s">Re-authorize now</a>.', 'pressocampus' ),
+					/* translators: 1: AI/client name, 2: days remaining, 3: settings page URL */
+					__( 'Your <strong>%1$s</strong> connection to Pressocampus expires in %2$d days. Ask your AI client to reconnect, or <a href="%3$s">revoke it</a> from Settings → Advanced.', 'pressocampus' ),
 					array(
 						'strong' => array(),
 						'a'      => array( 'href' => array() ),
@@ -110,7 +110,7 @@ class Onboarding {
 				),
 				esc_html( $notice_data['client_name'] ?? __( 'AI', 'pressocampus' ) ),
 				intval( $notice_data['days_left'] ?? 7 ),
-				esc_url( $reauth_url )
+				esc_url( $manage_url )
 			);
 			echo '</p></div>';
 		}

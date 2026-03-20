@@ -106,9 +106,12 @@ class Auth {
 
 	/**
 	 * Bypass OAuth validation in unit tests by setting auth state directly.
-	 * Only available when running under PHPUnit.
+	 * Only available when PRESSOCAMPUS_TESTING is defined (set in tests/bootstrap.php).
 	 */
 	public static function set_test_user( int $user_id, string $client_name, string $token_id ): void {
+		if ( ! defined( 'PRESSOCAMPUS_TESTING' ) ) {
+			return;
+		}
 		static::$current_user_id     = $user_id;
 		static::$current_client_name = $client_name;
 		static::$current_token_id    = $token_id;
@@ -116,6 +119,9 @@ class Auth {
 	}
 
 	public static function clear_test_user(): void {
+		if ( ! defined( 'PRESSOCAMPUS_TESTING' ) ) {
+			return;
+		}
 		static::$current_user_id     = 0;
 		static::$current_client_name = '';
 		static::$current_token_id    = '';

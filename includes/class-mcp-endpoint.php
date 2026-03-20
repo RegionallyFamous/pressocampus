@@ -154,12 +154,18 @@ class MCPEndpoint {
 		$client_name = Auth::get_current_client_name();
 		$host        = Auth::get_site_host();
 
-		$soul_post = $this->soul->get_post( $user_id );
-		if ( ! $soul_post ) {
-			$this->soul->create( $user_id, $host );
-		}
+		try {
+			$soul_post = $this->soul->get_post( $user_id );
+			if ( ! $soul_post ) {
+				$this->soul->create( $user_id, $host );
+			}
 
-		$snapshot_data = $this->soul->get_snapshot( $user_id );
+			$snapshot_data = $this->soul->get_snapshot( $user_id );
+		} catch ( \Throwable $e ) {
+			// Soul creation failed (e.g. concurrent lock, DB error).
+			// Return a retryable error; the AI client will retry on the next connection.
+			return $this->rpc_error( -32001, 'Soul initialization in progress — please retry.' );
+		}
 
 		$groups       = $this->resource_index->get_user_groups( $user_id );
 		$memory_count = $this->resource_index->get_memory_count( $user_id );
@@ -195,7 +201,8 @@ class MCPEndpoint {
 		$host    = Auth::get_site_host();
 
 		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
-			return $this->rpc_error( -32008, 'Rate limit exceeded for reads (60/min)' );
+			$reads_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_reads'] ?? 60 );
+			return $this->rpc_error( -32008, "Rate limit exceeded for reads ({$reads_per_min}/min)" );
 		}
 
 		// Cursor-based pagination: cursor is a base64-encoded 1-based page number.
@@ -347,7 +354,8 @@ class MCPEndpoint {
 		}
 
 		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
-			return $this->rpc_error( -32008, 'Rate limit exceeded for reads (60/min)' );
+			$reads_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_reads'] ?? 60 );
+			return $this->rpc_error( -32008, "Rate limit exceeded for reads ({$reads_per_min}/min)" );
 		}
 
 		$index_entry = $this->resource_index->get_by_uri( $uri );
@@ -587,7 +595,8 @@ class MCPEndpoint {
 
 	private function tool_remember( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			return $this->tool_error( 'rate_limit_exceeded', 'Write rate limit reached (30/min). Please wait a moment and try again.' );
+			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
+			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min). Please wait a moment and try again." );
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -713,7 +722,8 @@ class MCPEndpoint {
 
 	private function tool_forget( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			return $this->tool_error( 'rate_limit_exceeded', 'Write rate limit reached (30/min). Please wait a moment.' );
+			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
+			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min). Please wait a moment." );
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -763,7 +773,8 @@ class MCPEndpoint {
 
 	private function tool_update_memory( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			return $this->tool_error( 'rate_limit_exceeded', 'Write rate limit reached (30/min).' );
+			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
+			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min)." );
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -826,7 +837,8 @@ class MCPEndpoint {
 
 	private function tool_update_soul( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			return $this->tool_error( 'rate_limit_exceeded', 'Write rate limit reached (30/min).' );
+			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
+			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min)." );
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -862,7 +874,8 @@ class MCPEndpoint {
 
 	private function tool_update_soul_section( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			return $this->tool_error( 'rate_limit_exceeded', 'Write rate limit reached (30/min).' );
+			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
+			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min)." );
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -992,7 +1005,7 @@ class MCPEndpoint {
 				array_map( 'trim', explode( "\n", $settings['cors_origins'] ?? '' ) )
 			);
 
-			$site_origin    = wp_parse_url( home_url(), PHP_URL_SCHEME ) . '://' . wp_parse_url( home_url(), PHP_URL_HOST );
+			$site_origin    = ( wp_parse_url( home_url(), PHP_URL_SCHEME ) ?: 'https' ) . '://' . ( wp_parse_url( home_url(), PHP_URL_HOST ) ?: 'localhost' );
 			$always_allowed = array( $site_origin );
 
 			if ( in_array( $origin, $allowed_origins, true ) || in_array( $origin, $always_allowed, true ) ) {

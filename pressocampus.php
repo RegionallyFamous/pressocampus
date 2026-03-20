@@ -35,7 +35,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // ---------------------------------------------------------------------------
 
 define( 'PRESSOCAMPUS_VERSION', '1.0.0' );
-define( 'PRESSOCAMPUS_DB_VERSION', '1.1' );
+define( 'PRESSOCAMPUS_DB_VERSION', '1.2' );
 define( 'PRESSOCAMPUS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PRESSOCAMPUS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'PRESSOCAMPUS_PLUGIN_FILE', __FILE__ );
@@ -43,13 +43,44 @@ define( 'PRESSOCAMPUS_CPT', 'pressocampus_mem' );
 define( 'PRESSOCAMPUS_TAXONOMY', 'pressocampus_group' );
 define( 'PRESSOCAMPUS_SCOPE', 'pressocampus:memory' );
 
+// OAuth token TTLs — ISO 8601 duration strings.
+define( 'PRESSOCAMPUS_AUTH_CODE_TTL', 'PT10M' );    // 10 minutes
+define( 'PRESSOCAMPUS_ACCESS_TOKEN_TTL', 'PT1H' );  // 1 hour
+define( 'PRESSOCAMPUS_REFRESH_TOKEN_TTL', 'P30D' ); // 30 days
+
 // ---------------------------------------------------------------------------
 // Composer autoloader (vendor/autoload.php handles league/oauth2-server etc.)
 // ---------------------------------------------------------------------------
 
-if ( file_exists( PRESSOCAMPUS_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
-	require_once PRESSOCAMPUS_PLUGIN_DIR . 'vendor/autoload.php';
+if ( ! file_exists( PRESSOCAMPUS_PLUGIN_DIR . 'vendor/autoload.php' ) ) {
+	// Vendor directory is missing — the plugin was likely installed without running
+	// `composer install`. Flag it and bail out; admin_init will deactivate and notify.
+	update_option( 'pressocampus_vendor_missing', true );
+
+	add_action(
+		'admin_init',
+		static function (): void {
+			if ( ! function_exists( 'deactivate_plugins' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/plugin.php';
+			}
+			deactivate_plugins( plugin_basename( PRESSOCAMPUS_PLUGIN_FILE ) );
+		}
+	);
+
+	add_action(
+		'admin_notices',
+		static function (): void {
+			echo '<div class="notice notice-error"><p>'
+				. esc_html__( 'Pressocampus: The vendor directory is missing. Please run `composer install` in the plugin directory, then reactivate the plugin.', 'pressocampus' )
+				. '</p></div>';
+		}
+	);
+
+	return; // Stop loading the rest of the plugin.
 }
+
+delete_option( 'pressocampus_vendor_missing' );
+require_once PRESSOCAMPUS_PLUGIN_DIR . 'vendor/autoload.php';
 
 // ---------------------------------------------------------------------------
 // Map-based PSR-4-style autoloader for plugin classes

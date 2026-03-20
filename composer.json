@@ -5,6 +5,7 @@
     "license": "GPL-2.0-or-later",
     "require": {
         "php": ">=8.3",
+        "defuse/php-encryption": "^2.3",
         "league/oauth2-server": "^9.3"
     },
     "require-dev": {

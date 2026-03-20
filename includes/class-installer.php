@@ -15,6 +15,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Installer {
 
 	public static function activate(): void {
+		if ( version_compare( PHP_VERSION, '8.3', '<' ) ) {
+			deactivate_plugins( plugin_basename( PRESSOCAMPUS_PLUGIN_FILE ) );
+			wp_die( esc_html__( 'Pressocampus requires PHP 8.3 or higher.', 'pressocampus' ) );
+		}
+
+		global $wp_version;
+		if ( version_compare( $wp_version, '6.4', '<' ) ) {
+			deactivate_plugins( plugin_basename( PRESSOCAMPUS_PLUGIN_FILE ) );
+			wp_die( esc_html__( 'Pressocampus requires WordPress 6.4 or higher.', 'pressocampus' ) );
+		}
+
 		if ( ! extension_loaded( 'sodium' ) ) {
 			update_option( 'pressocampus_sodium_missing', true );
 		} else {
@@ -76,6 +87,9 @@ class Installer {
 	}
 
 	public static function deactivate(): void {
+		wp_clear_scheduled_hook( 'pressocampus_check_token_expiry' );
+		wp_clear_scheduled_hook( 'pressocampus_expire_memories' );
+		wp_clear_scheduled_hook( 'pressocampus_purge_audit_log' );
 		flush_rewrite_rules();
 	}
 
@@ -110,7 +124,9 @@ class Installer {
 				created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				PRIMARY KEY (id),
 				KEY user_id (user_id),
-				KEY created_at (created_at)
+				KEY created_at (created_at),
+				KEY action (action),
+				KEY oauth_client_name (oauth_client_name(100))
 			) $charset;";
 
 			$sql3 = "CREATE TABLE {$wpdb->prefix}pressocampus_oauth_clients (
@@ -176,6 +192,37 @@ class Installer {
 				if ( ! $has_composite ) {
 					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					$wpdb->query( "ALTER TABLE `{$resource_table}` ADD KEY user_post (user_id, post_id)" );
+				}
+			}
+
+			// 1.1 → 1.2: Add action and oauth_client_name indexes to audit_log.
+			if ( version_compare( (string) $current_db_version, '1.2', '<' ) ) {
+				$audit_table = $wpdb->prefix . 'pressocampus_audit_log';
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$has_action_idx = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
+						$audit_table,
+						'action'
+					)
+				);
+				if ( ! $has_action_idx ) {
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$wpdb->query( "ALTER TABLE `{$audit_table}` ADD KEY action (action)" );
+				}
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$has_client_idx = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
+						$audit_table,
+						'oauth_client_name'
+					)
+				);
+				if ( ! $has_client_idx ) {
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$wpdb->query( "ALTER TABLE `{$audit_table}` ADD KEY oauth_client_name (oauth_client_name(100))" );
 				}
 			}
 

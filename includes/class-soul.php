@@ -145,19 +145,20 @@ SOUL;
 	 * Create the soul post using the starter template.
 	 * A transient mutex prevents duplicates if two clients connect at once.
 	 *
-	 * @throws \RuntimeException If wp_insert_post returns a WP_Error.
+	 * @throws \RuntimeException If a concurrent creation is already in progress (caller should retry),
+	 *                           or if wp_insert_post returns a WP_Error.
 	 */
 	public function create( int $user_id, string $host ): \WP_Post {
 		$lock_key = 'pressocampus_creating_soul_' . $user_id;
-		$attempts = 0;
 
-		// Wait up to 3 s for any concurrent create to finish.
-		while ( get_transient( $lock_key ) && $attempts < 6 ) {
-			usleep( 500000 );
-			++$attempts;
+		// If another request is already creating the soul, throw immediately so the
+		// caller can return a retryable JSON-RPC error rather than blocking a worker.
+		if ( get_transient( $lock_key ) ) {
+			throw new \RuntimeException( 'Soul initialization in progress — please retry in a moment.' );
 		}
 
-		// Another process may have created the soul while we were waiting.
+		// Another process may have created the soul while this request was handling
+		// an earlier step; return it rather than creating a duplicate.
 		$existing = $this->get_post( $user_id );
 		if ( $existing !== null ) {
 			return $existing;
@@ -386,7 +387,8 @@ SOUL;
 
 			foreach ( $group_posts as $memory ) {
 				$uri     = (string) get_post_meta( $memory->ID, '_pressocampus_uri', true );
-				$age     = human_time_diff( strtotime( $memory->post_modified ), time() );
+				$ts      = (int) strtotime( $memory->post_modified ) ?: time();
+				$age     = human_time_diff( $ts, time() );
 				$lines[] = sprintf( '- %s — %s — updated %s ago', $memory->post_title, $uri, $age );
 			}
 
@@ -398,12 +400,15 @@ SOUL;
 		$existing = $this->get_index_post( $user_id );
 
 		if ( $existing !== null ) {
-			wp_update_post(
+			$update_result = wp_update_post(
 				array(
 					'ID'           => $existing->ID,
 					'post_content' => $index_content,
 				)
 			);
+			if ( is_wp_error( $update_result ) || $update_result === 0 ) {
+				return; // Don't drift the index against a failed post update.
+			}
 			$this->resource_index->upsert( $existing->ID, $index_uri, $user_id, $index_content );
 		} else {
 			$post_id = wp_insert_post(

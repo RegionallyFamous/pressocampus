@@ -12,7 +12,7 @@
 
 [![CI](https://github.com/pressocampus/pressocampus/actions/workflows/ci.yml/badge.svg)](https://github.com/pressocampus/pressocampus/actions)
 [![PHP 8.3+](https://img.shields.io/badge/PHP-8.3%2B-777bb4?logo=php&logoColor=white)](https://php.net)
-[![WordPress 7.0+](https://img.shields.io/badge/WordPress-7.0%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org)
+[![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org)
 [![MCP 2025-03-26](https://img.shields.io/badge/MCP-2025--03--26-6366f1)](https://modelcontextprotocol.io)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 

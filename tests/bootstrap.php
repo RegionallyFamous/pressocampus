@@ -11,6 +11,9 @@
  *   WP_CORE_DIR   – path to a WordPress install   (default /tmp/wordpress)
  */
 
+// Mark this as a test environment so Auth::set_test_user() / clear_test_user() are enabled.
+define( 'PRESSOCAMPUS_TESTING', true );
+
 $_tests_dir  = getenv( 'WP_TESTS_DIR' ) ?: '/tmp/wordpress-tests-lib';
 $_plugin_dir = dirname( __DIR__ );
 
