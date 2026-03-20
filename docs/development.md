@@ -294,7 +294,7 @@ Use curl to simulate the MCP initialize call:
 TOKEN="your-access-token"
 
 # Initialize
-curl -X POST https://localhost/wp-json/pressocampus/v1/mcp \
+curl -X POST https://localhost/brain \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"test","version":"1.0"},"capabilities":{}},"id":1}'

@@ -86,7 +86,7 @@ Upload to `wp-content/plugins/`, activate, and you're running an MCP server.
 From `WordPress → Pressocampus → Settings`, copy your Brain Endpoint URL:
 
 ```
-https://yoursite.com/wp-json/pressocampus/v1/mcp
+https://yoursite.com/brain
 ```
 
 **3. Connect your AI**
@@ -98,7 +98,7 @@ Paste this into Claude Desktop's `claude_desktop_config.json`:
   "mcpServers": {
     "my-brain": {
       "type": "http",
-      "url": "https://yoursite.com/wp-json/pressocampus/v1/mcp"
+      "url": "https://yoursite.com/brain"
     }
   }
 }

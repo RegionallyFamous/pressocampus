@@ -8,9 +8,9 @@
 
 **Check the URL.** The Brain Endpoint URL is:
 ```
-https://yoursite.com/wp-json/pressocampus/v1/mcp
+https://yoursite.com/brain
 ```
-Make sure you're using `https://`, not `http://`. Make sure there's no trailing slash.
+Make sure you're using `https://`, not `http://`. The original `wp-json` path also works as a fallback: `https://yoursite.com/wp-json/pressocampus/v1/mcp`.
 
 **Check the Test Connection button.** In `Pressocampus → Settings → Connect`, click **Test Connection**. This fires a real request and shows the exact error if one occurs.
 

@@ -5,7 +5,7 @@ Pressocampus works with any AI client that supports **MCP 2025-03-26** over HTTP
 Your Brain Endpoint URL is on `Pressocampus → Settings → Connect`. It looks like:
 
 ```
-https://yoursite.com/wp-json/pressocampus/v1/mcp
+https://yoursite.com/brain
 ```
 
 ---
@@ -30,7 +30,7 @@ Open the config file (create it if it doesn't exist) and add your server:
   "mcpServers": {
     "my-brain": {
       "type": "http",
-      "url": "https://yoursite.com/wp-json/pressocampus/v1/mcp"
+      "url": "https://yoursite.com/brain"
     }
   }
 }
@@ -77,7 +77,7 @@ Cursor supports MCP in its settings.
   "mcpServers": {
     "my-brain": {
       "type": "http",
-      "url": "https://yoursite.com/wp-json/pressocampus/v1/mcp"
+      "url": "https://yoursite.com/brain"
     }
   }
 }
@@ -94,7 +94,7 @@ Any client implementing MCP 2025-03-26 with Streamable HTTP transport will work.
 | Field | Value |
 |-------|-------|
 | Transport | `HTTP` / `Streamable HTTP` |
-| URL | `https://yoursite.com/wp-json/pressocampus/v1/mcp` |
+| URL | `https://yoursite.com/brain` |
 | Auth | `OAuth 2.1` (auto-discovered via `/.well-known`) |
 
 **Discovery endpoints** — clients that support auto-discovery can find everything at:
