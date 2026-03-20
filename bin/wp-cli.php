@@ -184,7 +184,7 @@ class Pressocampus_CLI {
 		}
 
 		$uri  = (string) $args[0];
-		$host = (string) ( parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
+		$host = (string) ( wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
 
 		if ( Soul::is_protected( $uri, $host ) ) {
 			WP_CLI::error( 'Cannot delete a protected memory (soul or index). Use `wp pressocampus export` to back it up first.' );
@@ -253,7 +253,7 @@ class Pressocampus_CLI {
 		$user_id = $this->resolve_user( $assoc_args );
 		$format  = $assoc_args['format'] ?? 'json';
 		$date    = gmdate( 'Y-m-d' );
-		$host    = (string) ( parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
+		$host    = (string) ( wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
 
 		// Collect all published memories for this user.
 		$q = new WP_Query(
@@ -379,7 +379,7 @@ class Pressocampus_CLI {
 			WP_CLI::error( "Not found: {$file}" );
 		}
 
-		$host  = (string) ( parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
+		$host  = (string) ( wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
 		$index = new ResourceIndex();
 		$soul  = new Soul( $index );
 
@@ -670,7 +670,7 @@ class Pressocampus_CLI {
 
 		$index_table = $wpdb->prefix . 'pressocampus_resource_index';
 		$audit_table = $wpdb->prefix . 'pressocampus_audit_log';
-		$host        = (string) ( parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
+		$host        = (string) ( wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
 		$soul_uri    = Soul::get_uri( $host );
 		$index_uri   = Soul::get_index_uri( $host );
 

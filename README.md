@@ -75,56 +75,6 @@ Your AI builds this with you over time, updating sections as it learns more. It'
 
 ---
 
-## Getting started in 3 steps
-
-**1. Install the plugin**
-
-Upload to `wp-content/plugins/`, activate, and you're running an MCP server.
-
-**2. Copy your Brain Endpoint URL**
-
-From `WordPress → Pressocampus → Settings`, copy your Brain Endpoint URL:
-
-```
-https://yoursite.com/brain
-```
-
-**3. Connect your AI**
-
-Paste this into Claude Desktop's `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "my-brain": {
-      "type": "http",
-      "url": "https://yoursite.com/brain"
-    }
-  }
-}
-```
-
-That's it. The first time your AI connects, it will walk you through setting up your Soul and start remembering automatically.
-
----
-
-## How it works
-
-Pressocampus implements the **Model Context Protocol (MCP 2025-03-26)** — the open standard that lets AI tools talk to external services. Think of it as a universal language that every modern AI understands.
-
-When your AI connects, it gets:
-
-| What | Why it matters |
-|------|----------------|
-| **Your Soul** | Loaded immediately, so every conversation starts with full context |
-| **Memory index** | A live table of contents so your AI knows what it knows |
-| **6 tools** | `remember`, `forget`, `update_memory`, `update_soul`, `update_soul_section`, `search_memory` |
-| **Full history** | Every action logged, searchable, exportable |
-
-Authentication uses **OAuth 2.1 with PKCE** — the same standard your bank uses. Your AI authorizes itself once through a secure consent screen, and that's it. No API keys to manage, no passwords to share.
-
----
-
 ## Your memories, your infrastructure
 
 | Without Pressocampus | With Pressocampus |
@@ -155,78 +105,15 @@ And here's what it *won't* remember, because it's designed not to:
 
 ---
 
-## Features
+## Built to be trusted
 
-### For people who just want it to work
-- **Zero configuration** — install, activate, paste a URL, done
-- **Guided onboarding** — your AI walks you through it on first connection
-- **Mobile-responsive consent screen** — connect from your phone
-- **One-click test** — verify your connection from the WordPress admin
+Memory is personal. Pressocampus is designed accordingly:
 
-### For people who want to understand what's happening
-- **History** — a full audit log of every memory operation, searchable by agent, action, or date
-- **Connected Apps** — see and revoke which AI clients have access
-- **Export** — download your entire brain as a ZIP of Markdown files anytime
-- **Import** — restore from backup or migrate between sites
-
-### For people who care about the details
-- **MCP 2025-03-26** — latest protocol spec, Streamable HTTP transport
-- **OAuth 2.1 + PKCE** — industry-standard security, dynamic client registration
+- **OAuth 2.1 + PKCE** — the same standard your bank uses. Your AI authorizes once through a secure consent screen. No API keys to manage.
+- **Per-user scoping** — on multi-user WordPress sites, every user's memories are completely isolated
+- **Plain Markdown** — every memory is a readable file. No proprietary format. No lock-in.
+- **Full audit log** — every memory operation logged, searchable, exportable
 - **ETag concurrency** — no accidental overwrites when multiple clients are active
-- **Per-user scoping** — multi-user WordPress sites just work
-- **Memory groups** — organize memories into categories your AI maintains
-- **Priority tiers** — critical/important/normal/low, surfaced to AI automatically
-- **TTL / expiry** — memories that should fade, do
-- **WP-CLI** — full command-line access for power users and DevOps
-
----
-
-## Requirements
-
-- WordPress 7.0 or higher
-- PHP 8.3 or higher
-- An MCP-compatible AI client (Claude Desktop, Cursor, or any client implementing MCP 2025-03-26)
-- HTTPS (required for OAuth — any modern WordPress host provides this)
-
----
-
-## Installation
-
-### Via WordPress admin
-1. Download the latest release zip from [Releases](https://github.com/pressocampus/pressocampus/releases)
-2. Go to `Plugins → Add New → Upload Plugin`
-3. Upload the zip, install, activate
-
-### Via WP-CLI
-```bash
-wp plugin install https://github.com/pressocampus/pressocampus/releases/latest/download/pressocampus.zip --activate
-```
-
-### Via Composer (for developers)
-```bash
-composer require pressocampus/pressocampus
-```
-
-See the [full installation guide →](docs/installation.md)
-
----
-
-## Documentation
-
-Everything you need to go deep is in the docs:
-
-| Guide | What's in it |
-|-------|-------------|
-| [Installation](docs/installation.md) | Full setup, requirements, server config |
-| [Connecting Your AI](docs/connecting-your-ai.md) | Claude, Cursor, generic MCP clients |
-| [The Soul](docs/the-soul.md) | What the Soul is, how to shape it |
-| [Memories](docs/memories.md) | Groups, priorities, TTL, search |
-| [MCP Tools Reference](docs/mcp-tools-reference.md) | All 6 tools, parameters, examples |
-| [Admin Guide](docs/admin-guide.md) | History, Settings, Export/Import |
-| [WP-CLI Reference](docs/wp-cli-reference.md) | Every command with examples |
-| [Security](docs/security.md) | OAuth 2.1, PKCE, threat model |
-| [Development](docs/development.md) | Contributing, build system, tests |
-| [Troubleshooting](docs/troubleshooting.md) | Common problems, solutions |
 
 ---
 
@@ -241,6 +128,23 @@ Pressocampus uses WordPress because WordPress is the most trusted, most deployed
 We built Pressocampus for regular people. Not developers. Not AI researchers. People who use AI every day and want their work to accumulate instead of evaporate.
 
 **Your brain, your server, your rules.**
+
+---
+
+## Documentation
+
+| Guide | What's in it |
+|-------|-------------|
+| [Installation](docs/installation.md) | Requirements, setup, server config |
+| [Connecting Your AI](docs/connecting-your-ai.md) | Claude, Cursor, generic MCP clients |
+| [The Soul](docs/the-soul.md) | What the Soul is, how to shape it |
+| [Memories](docs/memories.md) | Groups, priorities, TTL, search |
+| [MCP Tools Reference](docs/mcp-tools-reference.md) | All 6 tools, parameters, examples |
+| [Admin Guide](docs/admin-guide.md) | History, Settings, Export/Import |
+| [WP-CLI Reference](docs/wp-cli-reference.md) | Every command with examples |
+| [Security](docs/security.md) | OAuth 2.1, PKCE, threat model |
+| [Development](docs/development.md) | Contributing, build system, tests |
+| [Troubleshooting](docs/troubleshooting.md) | Common problems, solutions |
 
 ---
 

@@ -21,9 +21,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamInterface;
 use Psr\Http\Message\UriInterface;
 
-// ---------------------------------------------------------------------------
 // Stream
-// ---------------------------------------------------------------------------
 
 // phpcs:ignore Squiz.Commenting.ClassComment.WrongStyle -- section divider used intentionally; class is part of a grouped bridge file
 class WPStream implements StreamInterface {
@@ -99,9 +97,7 @@ class WPStream implements StreamInterface {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // URI
-// ---------------------------------------------------------------------------
 
 // phpcs:ignore Squiz.Commenting.ClassComment.WrongStyle -- section divider used intentionally
 class WPUri implements UriInterface {
@@ -182,9 +178,7 @@ class WPUri implements UriInterface {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // Response
-// ---------------------------------------------------------------------------
 
 // phpcs:ignore Squiz.Commenting.ClassComment.WrongStyle -- section divider used intentionally
 class WPResponse implements ResponseInterface {
@@ -273,9 +267,7 @@ class WPResponse implements ResponseInterface {
 	}
 }
 
-// ---------------------------------------------------------------------------
 // Server Request
-// ---------------------------------------------------------------------------
 
 /** Minimal PSR-7 ServerRequestInterface implementation wrapping WordPress globals. */
 class WPServerRequest implements ServerRequestInterface {

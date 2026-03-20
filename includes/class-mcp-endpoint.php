@@ -24,37 +24,37 @@ class MCPEndpoint {
 	private const MCP_VERSION = '2025-03-26';
 
 	public function __construct(
-		private Auth          $auth,
-		private CPT           $cpt,
+		private Auth $auth,
+		private CPT $cpt,
 		private ResourceIndex $resource_index,
-		private Soul          $soul,
-		private AuditLog      $audit_log,
-		private Cache         $cache
+		private Soul $soul,
+		private AuditLog $audit_log,
+		private Cache $cache
 	) {
-		add_action( 'rest_api_init', [ $this, 'register_route' ] );
+		add_action( 'rest_api_init', array( $this, 'register_route' ) );
 	}
-
-	// -----------------------------------------------------------------------
-	// Route registration
-	// -----------------------------------------------------------------------
 
 	public function register_route(): void {
-		register_rest_route( 'pressocampus/v1', '/mcp', [
-			'methods'             => 'POST',
-			'callback'            => [ $this, 'handle' ],
-			'permission_callback' => '__return_true',
-		] );
+		register_rest_route(
+			'pressocampus/v1',
+			'/mcp',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( $this, 'handle' ),
+				'permission_callback' => '__return_true',
+			)
+		);
 
-		register_rest_route( 'pressocampus/v1', '/mcp', [
-			'methods'             => 'OPTIONS',
-			'callback'            => [ $this, 'handle_cors_preflight' ],
-			'permission_callback' => '__return_true',
-		] );
+		register_rest_route(
+			'pressocampus/v1',
+			'/mcp',
+			array(
+				'methods'             => 'OPTIONS',
+				'callback'            => array( $this, 'handle_cors_preflight' ),
+				'permission_callback' => '__return_true',
+			)
+		);
 	}
-
-	// -----------------------------------------------------------------------
-	// Main entry-point
-	// -----------------------------------------------------------------------
 
 	public function handle( \WP_REST_Request $request ): \WP_REST_Response {
 		$this->set_cors_headers();
@@ -65,7 +65,7 @@ class MCPEndpoint {
 				-32001,
 				'Unauthorized',
 				401,
-				[ 'reauth_url' => rest_url( 'pressocampus/v1/oauth/authorize' ) ]
+				array( 'reauth_url' => rest_url( 'pressocampus/v1/oauth/authorize' ) )
 			);
 		}
 
@@ -74,9 +74,8 @@ class MCPEndpoint {
 			return $this->error_response( null, -32700, 'Parse error', 400 );
 		}
 
-		// Batch request (array of RPC objects).
 		if ( is_array( $body ) && array_is_list( $body ) && ! empty( $body ) ) {
-			$responses = [];
+			$responses = array();
 			foreach ( $body as $item ) {
 				if ( ! is_array( $item ) ) {
 					continue;
@@ -93,7 +92,6 @@ class MCPEndpoint {
 			return new \WP_REST_Response( $responses, 200 );
 		}
 
-		// Single request.
 		if ( ! is_array( $body ) ) {
 			return $this->error_response( null, -32700, 'Parse error', 400 );
 		}
@@ -105,35 +103,29 @@ class MCPEndpoint {
 		return new \WP_REST_Response( $resp, 200 );
 	}
 
-	// -----------------------------------------------------------------------
-	// Dispatcher
-	// -----------------------------------------------------------------------
-
 	private function dispatch_single( array $rpc ): ?array {
 		$method = $rpc['method'] ?? '';
 		$id     = $rpc['id'] ?? null;
-		$params = $rpc['params'] ?? [];
+		$params = $rpc['params'] ?? array();
 
 		$is_notification = ! array_key_exists( 'id', $rpc );
 
 		$result = match ( $method ) {
-			'initialize'                => $this->method_initialize( is_array( $params ) ? $params : [] ),
+			'initialize'                => $this->method_initialize( is_array( $params ) ? $params : array() ),
 			'notifications/initialized' => null,
-			'ping'                      => [],
-			'resources/list'            => $this->method_resources_list( is_array( $params ) ? $params : [] ),
-			'resources/read'            => $this->method_resources_read( is_array( $params ) ? $params : [] ),
-			'resources/templates/list'  => $this->method_templates_list( is_array( $params ) ? $params : [] ),
+			'ping'                      => array(),
+			'resources/list'            => $this->method_resources_list( is_array( $params ) ? $params : array() ),
+			'resources/read'            => $this->method_resources_read( is_array( $params ) ? $params : array() ),
+			'resources/templates/list'  => $this->method_templates_list( is_array( $params ) ? $params : array() ),
 			'tools/list'                => $this->method_tools_list(),
-			'tools/call'                => $this->method_tools_call( is_array( $params ) ? $params : [] ),
+			'tools/call'                => $this->method_tools_call( is_array( $params ) ? $params : array() ),
 			default                     => $this->rpc_error( -32601, "Method not found: $method" ),
 		};
 
-		// Notifications never get a response.
 		if ( $is_notification ) {
 			return null;
 		}
 
-		// notifications/initialized is always treated as a notification.
 		if ( $method === 'notifications/initialized' ) {
 			return null;
 		}
@@ -143,31 +135,25 @@ class MCPEndpoint {
 		}
 
 		if ( isset( $result['__rpc_error'] ) ) {
-			return [
+			return array(
 				'jsonrpc' => '2.0',
 				'id'      => $id,
 				'error'   => $result['error'],
-			];
+			);
 		}
 
-		return [
+		return array(
 			'jsonrpc' => '2.0',
 			'id'      => $id,
 			'result'  => $result,
-		];
+		);
 	}
-
-	// -----------------------------------------------------------------------
-	// MCP methods
-	// -----------------------------------------------------------------------
 
 	private function method_initialize( array $params ): array {
 		$user_id     = Auth::get_current_user_id();
 		$client_name = Auth::get_current_client_name();
 		$host        = Auth::get_site_host();
 
-		// Ensure soul exists — get_snapshot() already creates it, but we
-		// replicate the spec pattern for clarity.
 		$soul_post = $this->soul->get_post( $user_id );
 		if ( ! $soul_post ) {
 			$this->soul->create( $user_id, $host );
@@ -178,18 +164,21 @@ class MCPEndpoint {
 		$groups       = $this->resource_index->get_user_groups( $user_id );
 		$memory_count = $this->resource_index->get_memory_count( $user_id );
 
-		return [
+		return array(
 			'protocolVersion' => self::MCP_VERSION,
-			'serverInfo'      => [
+			'serverInfo'      => array(
 				'name'    => 'Pressocampus',
 				'version' => PRESSOCAMPUS_VERSION,
-			],
+			),
 			'instructions'    => 'Read meta.soul_snapshot before responding — it defines who this person is. If meta.soulStatus is empty, interview them and write their soul before anything else. Remember things proactively; search before remembering; only forget when clearly asked. These memories are a long-term personal archive meant to outlast any AI platform — handle them with the permanence they deserve.',
-			'capabilities'    => [
-				'resources' => [ 'listChanged' => true, 'subscribe' => false ],
+			'capabilities'    => array(
+				'resources' => array(
+					'listChanged' => true,
+					'subscribe'   => false,
+				),
 				'tools'     => new \stdClass(),
-			],
-			'meta'            => [
+			),
+			'meta'            => array(
 				'groups'         => $groups,
 				'memoryCount'    => $memory_count,
 				'soulStatus'     => $snapshot_data['status'],
@@ -197,8 +186,8 @@ class MCPEndpoint {
 				'soul_snapshot'  => $snapshot_data['snapshot'],
 				'soul_etag'      => $snapshot_data['etag'],
 				'soul_truncated' => $snapshot_data['truncated'],
-			],
-		];
+			),
+		);
 	}
 
 	private function method_resources_list( array $params ): array {
@@ -218,20 +207,22 @@ class MCPEndpoint {
 			''
 		);
 
-		$query = new \WP_Query( [
-			'post_type'      => PRESSOCAMPUS_CPT,
-			'post_status'    => [ 'publish', 'pressocampus_expired' ],
-			'author'         => $user_id,
-			'posts_per_page' => -1,
-			'no_found_rows'  => true,
-		] );
+		$query = new \WP_Query(
+			array(
+				'post_type'      => PRESSOCAMPUS_CPT,
+				'post_status'    => array( 'publish', 'pressocampus_expired' ),
+				'author'         => $user_id,
+				'posts_per_page' => -1,
+				'no_found_rows'  => true,
+			)
+		);
 
 		$soul_uri  = Soul::get_uri( $host );
 		$index_uri = Soul::get_index_uri( $host );
 
 		$soul_resource  = null;
 		$index_resource = null;
-		$memories       = [];
+		$memories       = array();
 
 		foreach ( $query->posts as $post ) {
 			$uri      = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
@@ -243,15 +234,17 @@ class MCPEndpoint {
 			} elseif ( $uri === $index_uri ) {
 				$index_resource = $resource;
 			} else {
-				$memories[] = [
+				$memories[] = array(
 					'resource'       => $resource,
 					'priority_float' => CPT::priority_to_float( $priority ),
-				];
+				);
 			}
 		}
 
 		// Sort by priority descending, then by recency descending.
-		usort( $memories, static fn( array $a, array $b ): int =>
+		usort(
+			$memories,
+			static fn( array $a, array $b ): int =>
 			$b['priority_float'] <=> $a['priority_float']
 				?: strcmp(
 					$b['resource']['updated_at'] ?? '',
@@ -259,30 +252,34 @@ class MCPEndpoint {
 				)
 		);
 
-		$resources = [];
-		if ( $soul_resource )  $resources[] = $soul_resource;
-		if ( $index_resource ) $resources[] = $index_resource;
+		$resources = array();
+		if ( $soul_resource ) {
+			$resources[] = $soul_resource;
+		}
+		if ( $index_resource ) {
+			$resources[] = $index_resource;
+		}
 		foreach ( $memories as $m ) {
 			$resources[] = $m['resource'];
 		}
 
 		$this->resource_index->rebuild_if_dirty( $user_id, $host, $this->soul );
 
-		return [ 'resources' => $resources ];
+		return array( 'resources' => $resources );
 	}
 
 	private function post_to_resource_item( \WP_Post $post, string $uri, string $priority ): array {
-		return [
+		return array(
 			'uri'         => $uri,
 			'name'        => $post->post_title,
 			'description' => (string) ( get_post_meta( $post->ID, '_pressocampus_description', true ) ?: '' ),
 			'mimeType'    => (string) ( get_post_meta( $post->ID, '_pressocampus_mime_type', true ) ?: 'text/markdown' ),
-			'annotations' => [
+			'annotations' => array(
 				'priority'   => CPT::priority_to_float( $priority ),
 				'confidence' => (string) ( get_post_meta( $post->ID, '_pressocampus_confidence', true ) ?: 'medium' ),
-			],
+			),
 			'updated_at'  => $post->post_modified_gmt,
-		];
+		);
 	}
 
 	private function method_resources_read( array $params ): array {
@@ -314,7 +311,7 @@ class MCPEndpoint {
 
 		$related_uris = $related
 			? array_values( array_filter( array_map( 'trim', explode( ',', $related ) ) ) )
-			: [];
+			: array();
 
 		$this->audit_log->record(
 			'resources_read',
@@ -331,135 +328,186 @@ class MCPEndpoint {
 			header( 'Cache-Control: private, max-age=300' );
 		}
 
-		return [
-			'contents'    => [
-				[
+		return array(
+			'contents'    => array(
+				array(
 					'uri'      => $uri,
 					'text'     => $content,
 					'mimeType' => $mime,
-				],
-			],
-			'annotations' => [
+				),
+			),
+			'annotations' => array(
 				'confidence' => (string) ( get_post_meta( $post_id, '_pressocampus_confidence', true ) ?: 'medium' ),
 				'priority'   => CPT::priority_to_float(
 					(string) ( get_post_meta( $post_id, '_pressocampus_annotation_priority', true ) ?: 'normal' )
 				),
 				'related'    => $related_uris,
 				'etag'       => $etag,
-			],
-		];
+			),
+		);
 	}
 
 	private function method_templates_list( array $params ): array {
 		$host = Auth::get_site_host();
-		return [
-			'resourceTemplates' => [
-				[
+		return array(
+			'resourceTemplates' => array(
+				array(
 					'uriTemplate' => "pressocampus://{$host}/memory/{uuid}",
 					'name'        => 'Memory',
 					'description' => 'A single stored memory',
 					'mimeType'    => 'text/markdown',
-				],
-			],
-		];
+				),
+			),
+		);
 	}
 
 	private function method_tools_list(): array {
-		return [
-			'tools' => [
-				[
+		return array(
+			'tools' => array(
+				array(
 					'name'        => 'remember',
 					'description' => "Store something permanently. Use when the user states a preference, shares a personal fact, describes a decision, or asks you to remember something. Don't remember questions, greetings, or casual conversation.",
-					'inputSchema' => [
+					'inputSchema' => array(
 						'type'       => 'object',
-						'properties' => [
-							'content'    => [ 'type' => 'string', 'description' => 'The content to remember' ],
-							'name'       => [ 'type' => 'string', 'description' => 'Display name. Auto-generated from first 60 chars if omitted.' ],
-							'group'      => [ 'type' => 'string', 'description' => 'Group/category. Use existing groups from initialize meta.groups when possible.' ],
-							'related'    => [ 'type' => 'array', 'items' => [ 'type' => 'string' ], 'description' => 'URIs of related memories' ],
-							'priority'   => [ 'type' => 'string', 'enum' => [ 'critical', 'important', 'normal', 'low' ], 'default' => 'normal' ],
-							'confidence' => [ 'type' => 'string', 'enum' => [ 'high', 'medium', 'low' ], 'default' => 'medium' ],
-							'context'    => [ 'type' => 'string', 'description' => 'Why you are storing this (shown in History). Max 200 chars.' ],
-						],
-						'required'   => [ 'content' ],
-					],
-				],
-				[
+						'properties' => array(
+							'content'    => array(
+								'type'        => 'string',
+								'description' => 'The content to remember',
+							),
+							'name'       => array(
+								'type'        => 'string',
+								'description' => 'Display name. Auto-generated from first 60 chars if omitted.',
+							),
+							'group'      => array(
+								'type'        => 'string',
+								'description' => 'Group/category. Use existing groups from initialize meta.groups when possible.',
+							),
+							'related'    => array(
+								'type'        => 'array',
+								'items'       => array( 'type' => 'string' ),
+								'description' => 'URIs of related memories',
+							),
+							'priority'   => array(
+								'type'    => 'string',
+								'enum'    => array( 'critical', 'important', 'normal', 'low' ),
+								'default' => 'normal',
+							),
+							'confidence' => array(
+								'type'    => 'string',
+								'enum'    => array( 'high', 'medium', 'low' ),
+								'default' => 'medium',
+							),
+							'context'    => array(
+								'type'        => 'string',
+								'description' => 'Why you are storing this (shown in History). Max 200 chars.',
+							),
+						),
+						'required'   => array( 'content' ),
+					),
+				),
+				array(
 					'name'        => 'forget',
 					'description' => 'Permanently delete a memory. Only call this when the user explicitly asks to forget something. This is irreversible.',
-					'inputSchema' => [
+					'inputSchema' => array(
 						'type'       => 'object',
-						'properties' => [
-							'uri'     => [ 'type' => 'string', 'description' => 'The URI of the memory to delete' ],
-							'context' => [ 'type' => 'string', 'description' => 'Why you are deleting this' ],
-						],
-						'required'   => [ 'uri' ],
-					],
-				],
-				[
+						'properties' => array(
+							'uri'     => array(
+								'type'        => 'string',
+								'description' => 'The URI of the memory to delete',
+							),
+							'context' => array(
+								'type'        => 'string',
+								'description' => 'Why you are deleting this',
+							),
+						),
+						'required'   => array( 'uri' ),
+					),
+				),
+				array(
 					'name'        => 'update_memory',
 					'description' => 'Update the content of an existing memory. Use update_soul or update_soul_section for the soul.',
-					'inputSchema' => [
+					'inputSchema' => array(
 						'type'       => 'object',
-						'properties' => [
-							'uri'     => [ 'type' => 'string' ],
-							'content' => [ 'type' => 'string' ],
-							'etag'    => [ 'type' => 'string', 'description' => 'Optional ETag from resources/read for optimistic concurrency. Returns 409 if stale.' ],
-							'context' => [ 'type' => 'string' ],
-						],
-						'required'   => [ 'uri', 'content' ],
-					],
-				],
-				[
+						'properties' => array(
+							'uri'     => array( 'type' => 'string' ),
+							'content' => array( 'type' => 'string' ),
+							'etag'    => array(
+								'type'        => 'string',
+								'description' => 'Optional ETag from resources/read for optimistic concurrency. Returns 409 if stale.',
+							),
+							'context' => array( 'type' => 'string' ),
+						),
+						'required'   => array( 'uri', 'content' ),
+					),
+				),
+				array(
 					'name'        => 'update_soul',
 					'description' => "Update the user's soul — their persistent identity and values that follow them across all AI platforms. Prefer update_soul_section for targeted changes. Use this only for full restructuring. Creates the soul if it doesn't exist.",
-					'inputSchema' => [
+					'inputSchema' => array(
 						'type'       => 'object',
-						'properties' => [
-							'content' => [ 'type' => 'string', 'description' => 'The full updated soul content (Markdown)' ],
-							'etag'    => [ 'type' => 'string', 'description' => 'Optional ETag for concurrency check' ],
-							'context' => [ 'type' => 'string' ],
-						],
-						'required'   => [ 'content' ],
-					],
-				],
-				[
+						'properties' => array(
+							'content' => array(
+								'type'        => 'string',
+								'description' => 'The full updated soul content (Markdown)',
+							),
+							'etag'    => array(
+								'type'        => 'string',
+								'description' => 'Optional ETag for concurrency check',
+							),
+							'context' => array( 'type' => 'string' ),
+						),
+						'required'   => array( 'content' ),
+					),
+				),
+				array(
 					'name'        => 'update_soul_section',
 					'description' => 'Update one section of the soul. Prefer this over update_soul for any targeted change — safer, faster, less risk of overwriting other sections.',
-					'inputSchema' => [
+					'inputSchema' => array(
 						'type'       => 'object',
-						'properties' => [
-							'section' => [ 'type' => 'string', 'description' => 'The ## Heading text, e.g. "How I Communicate"' ],
-							'content' => [ 'type' => 'string', 'description' => 'New section body' ],
-							'context' => [ 'type' => 'string' ],
-						],
-						'required'   => [ 'section', 'content' ],
-					],
-				],
-				[
+						'properties' => array(
+							'section' => array(
+								'type'        => 'string',
+								'description' => 'The ## Heading text, e.g. "How I Communicate"',
+							),
+							'content' => array(
+								'type'        => 'string',
+								'description' => 'New section body',
+							),
+							'context' => array( 'type' => 'string' ),
+						),
+						'required'   => array( 'section', 'content' ),
+					),
+				),
+				array(
 					'name'        => 'search_memory',
 					'description' => 'Search memories by keyword. Call this when the user asks a question that might be answered by stored memories.',
-					'inputSchema' => [
+					'inputSchema' => array(
 						'type'       => 'object',
-						'properties' => [
-							'query'   => [ 'type' => 'string' ],
-							'group'   => [ 'type' => 'string', 'description' => 'Optional group filter' ],
-							'limit'   => [ 'type' => 'integer', 'default' => 10 ],
-							'context' => [ 'type' => 'string' ],
-						],
-						'required'   => [ 'query' ],
-					],
-				],
-			],
-		];
+						'properties' => array(
+							'query'   => array( 'type' => 'string' ),
+							'group'   => array(
+								'type'        => 'string',
+								'description' => 'Optional group filter',
+							),
+							'limit'   => array(
+								'type'    => 'integer',
+								'default' => 10,
+							),
+							'context' => array( 'type' => 'string' ),
+						),
+						'required'   => array( 'query' ),
+					),
+				),
+			),
+		);
 	}
 
 	private function method_tools_call( array $params ): array {
 		$tool_name = $params['name'] ?? '';
-		$args      = $params['arguments'] ?? [];
+		$args      = $params['arguments'] ?? array();
 
 		if ( ! is_array( $args ) ) {
-			$args = [];
+			$args = array();
 		}
 
 		return match ( $tool_name ) {
@@ -469,16 +517,22 @@ class MCPEndpoint {
 			'update_soul'         => $this->tool_update_soul( $args ),
 			'update_soul_section' => $this->tool_update_soul_section( $args ),
 			'search_memory'       => $this->tool_search_memory( $args ),
-			default               => [
+			default               => array(
 				'isError' => true,
-				'content' => [ [ 'type' => 'text', 'text' => wp_json_encode( [ 'code' => 'tool_not_found', 'message' => "Unknown tool: $tool_name" ] ) ] ],
-			],
+				'content' => array(
+					array(
+						'type' => 'text',
+						'text' => wp_json_encode(
+							array(
+								'code'    => 'tool_not_found',
+								'message' => "Unknown tool: $tool_name",
+							)
+						),
+					),
+				),
+			),
 		};
 	}
-
-	// -----------------------------------------------------------------------
-	// Tools
-	// -----------------------------------------------------------------------
 
 	private function tool_remember( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
@@ -494,8 +548,8 @@ class MCPEndpoint {
 			return $this->tool_error( 'missing_content', 'Content is required.' );
 		}
 
-		$settings  = get_option( 'pressocampus_settings', [] );
-		$max_size  = (int) ( $settings['max_content_size'] ?? 524288 );
+		$settings = get_option( 'pressocampus_settings', array() );
+		$max_size = (int) ( $settings['max_content_size'] ?? 524288 );
 		if ( mb_strlen( $content, 'UTF-8' ) > $max_size ) {
 			return $this->tool_error( 'content_too_large', "Content exceeds maximum size of {$max_size} bytes." );
 		}
@@ -516,29 +570,31 @@ class MCPEndpoint {
 			foreach ( $search_results as $result ) {
 				$index_entry = $this->resource_index->get_by_uri( $result['uri'] );
 				if ( $index_entry && $index_entry['content_hash'] === $content_hash ) {
-					return $this->tool_success( [
-						'uri'  => $result['uri'],
-						'name' => $result['name'],
-						'note' => 'This memory already exists (exact duplicate). No new memory created.',
-					] );
+					return $this->tool_success(
+						array(
+							'uri'  => $result['uri'],
+							'name' => $result['name'],
+							'note' => 'This memory already exists (exact duplicate). No new memory created.',
+						)
+					);
 				}
 				if ( ! $possible_contradiction ) {
 					similar_text( $content, (string) ( $result['excerpt'] ?? '' ), $pct );
 					if ( $pct > 50 ) {
-						$possible_contradiction = [
+						$possible_contradiction = array(
 							'uri'        => $result['uri'],
 							'name'       => $result['name'],
 							'excerpt'    => $result['excerpt'],
 							'updated_at' => $result['updated_at'] ?? '',
-						];
+						);
 					}
 				}
 				if ( ! $possible_duplicate ) {
-					$possible_duplicate = [
+					$possible_duplicate = array(
 						'uri'     => $result['uri'],
 						'name'    => $result['name'],
 						'excerpt' => $result['excerpt'],
-					];
+					);
 				}
 			}
 		}
@@ -550,30 +606,32 @@ class MCPEndpoint {
 		}
 
 		$uri        = CPT::generate_uri( $host );
-		$priority   = in_array( $args['priority'] ?? '', [ 'critical', 'important', 'normal', 'low' ], true ) ? $args['priority'] : 'normal';
-		$confidence = in_array( $args['confidence'] ?? '', [ 'high', 'medium', 'low' ], true ) ? $args['confidence'] : 'medium';
+		$priority   = in_array( $args['priority'] ?? '', array( 'critical', 'important', 'normal', 'low' ), true ) ? $args['priority'] : 'normal';
+		$confidence = in_array( $args['confidence'] ?? '', array( 'high', 'medium', 'low' ), true ) ? $args['confidence'] : 'medium';
 		$group      = sanitize_text_field( $args['group'] ?? '' );
 		$related    = is_array( $args['related'] ?? null )
 			? implode( ',', array_map( 'sanitize_text_field', $args['related'] ) )
 			: '';
 
-		$post_id = wp_insert_post( [
-			'post_type'    => PRESSOCAMPUS_CPT,
-			'post_status'  => 'publish',
-			'post_title'   => $name,
-			'post_content' => $content,
-			'post_author'  => $user_id,
-		] );
+		$post_id = wp_insert_post(
+			array(
+				'post_type'    => PRESSOCAMPUS_CPT,
+				'post_status'  => 'publish',
+				'post_title'   => $name,
+				'post_content' => $content,
+				'post_author'  => $user_id,
+			)
+		);
 
 		if ( is_wp_error( $post_id ) ) {
 			return $this->tool_error( 'insert_failed', $post_id->get_error_message() );
 		}
 
-		update_post_meta( $post_id, '_pressocampus_uri',                  $uri );
-		update_post_meta( $post_id, '_pressocampus_mime_type',             'text/markdown' );
-		update_post_meta( $post_id, '_pressocampus_annotation_priority',   $priority );
-		update_post_meta( $post_id, '_pressocampus_confidence',            $confidence );
-		update_post_meta( $post_id, '_pressocampus_schema_version',        '1.0' );
+		update_post_meta( $post_id, '_pressocampus_uri', $uri );
+		update_post_meta( $post_id, '_pressocampus_mime_type', 'text/markdown' );
+		update_post_meta( $post_id, '_pressocampus_annotation_priority', $priority );
+		update_post_meta( $post_id, '_pressocampus_confidence', $confidence );
+		update_post_meta( $post_id, '_pressocampus_schema_version', '1.0' );
 
 		if ( $related ) {
 			update_post_meta( $post_id, '_pressocampus_related', $related );
@@ -588,9 +646,16 @@ class MCPEndpoint {
 		do_action( 'pressocampus_memory_changed', $post_id, $user_id );
 		$this->resource_index->mark_dirty( $user_id );
 
-		$result_data = [ 'uri' => $uri, 'name' => $name ];
-		if ( $possible_duplicate )     $result_data['possible_duplicate']    = $possible_duplicate;
-		if ( $possible_contradiction ) $result_data['possible_contradiction'] = $possible_contradiction;
+		$result_data = array(
+			'uri'  => $uri,
+			'name' => $name,
+		);
+		if ( $possible_duplicate ) {
+			$result_data['possible_duplicate'] = $possible_duplicate;
+		}
+		if ( $possible_contradiction ) {
+			$result_data['possible_contradiction'] = $possible_contradiction;
+		}
 
 		return $this->tool_success( $result_data );
 	}
@@ -636,7 +701,13 @@ class MCPEndpoint {
 		do_action( 'pressocampus_memory_changed', $post_id, $user_id );
 		$this->resource_index->mark_dirty( $user_id );
 
-		return $this->tool_success( [ 'uri' => $uri, 'name' => $post_title, 'deleted' => true ] );
+		return $this->tool_success(
+			array(
+				'uri'     => $uri,
+				'name'    => $post_title,
+				'deleted' => true,
+			)
+		);
 	}
 
 	private function tool_update_memory( array $args ): array {
@@ -651,8 +722,12 @@ class MCPEndpoint {
 		$etag    = isset( $args['etag'] ) ? (string) $args['etag'] : null;
 		$context = substr( $args['context'] ?? '', 0, 200 ) ?: '[no context provided]';
 
-		if ( ! $uri )     return $this->tool_error( 'missing_uri',     'URI is required.' );
-		if ( ! $content ) return $this->tool_error( 'missing_content', 'Content is required.' );
+		if ( ! $uri ) {
+			return $this->tool_error( 'missing_uri', 'URI is required.' );
+		}
+		if ( ! $content ) {
+			return $this->tool_error( 'missing_content', 'Content is required.' );
+		}
 
 		if ( Soul::is_protected( $uri, $host ) ) {
 			return $this->tool_error( 'soul_protected', 'Use update_soul or update_soul_section to update the soul.' );
@@ -672,7 +747,13 @@ class MCPEndpoint {
 			}
 		}
 
-		$update_result = wp_update_post( [ 'ID' => $post_id, 'post_content' => $content ], true );
+		$update_result = wp_update_post(
+			array(
+				'ID'           => $post_id,
+				'post_content' => $content,
+			),
+			true
+		);
 		if ( is_wp_error( $update_result ) ) {
 			return $this->tool_error( 'update_failed', $update_result->get_error_message() );
 		}
@@ -684,7 +765,12 @@ class MCPEndpoint {
 		do_action( 'pressocampus_memory_changed', $post_id, $user_id );
 		$this->resource_index->mark_dirty( $user_id );
 
-		return $this->tool_success( [ 'uri' => $uri, 'etag' => $new_hash ] );
+		return $this->tool_success(
+			array(
+				'uri'  => $uri,
+				'etag' => $new_hash,
+			)
+		);
 	}
 
 	private function tool_update_soul( array $args ): array {
@@ -715,7 +801,12 @@ class MCPEndpoint {
 		$this->audit_log->record( 'update_soul', $user_id, Auth::get_current_client_name(), (string) $result['uri'], 'My Soul', $context );
 		$this->resource_index->mark_dirty( $user_id );
 
-		return $this->tool_success( [ 'uri' => $result['uri'], 'etag' => $result['etag'] ] );
+		return $this->tool_success(
+			array(
+				'uri'  => $result['uri'],
+				'etag' => $result['etag'],
+			)
+		);
 	}
 
 	private function tool_update_soul_section( array $args ): array {
@@ -729,8 +820,12 @@ class MCPEndpoint {
 		$content = $args['content'] ?? '';
 		$context = substr( $args['context'] ?? '', 0, 200 ) ?: '[no context provided]';
 
-		if ( ! $section ) return $this->tool_error( 'missing_section', 'Section heading is required.' );
-		if ( ! $content ) return $this->tool_error( 'missing_content', 'Content is required.' );
+		if ( ! $section ) {
+			return $this->tool_error( 'missing_section', 'Section heading is required.' );
+		}
+		if ( ! $content ) {
+			return $this->tool_error( 'missing_content', 'Content is required.' );
+		}
 
 		$result = $this->soul->update_section( $user_id, $section, $content, $host );
 
@@ -744,7 +839,13 @@ class MCPEndpoint {
 		$this->audit_log->record( 'update_soul_section', $user_id, Auth::get_current_client_name(), (string) $result['uri'], "My Soul → {$section}", $context );
 		$this->resource_index->mark_dirty( $user_id );
 
-		return $this->tool_success( [ 'uri' => $result['uri'], 'etag' => $result['etag'], 'section' => $section ] );
+		return $this->tool_success(
+			array(
+				'uri'     => $result['uri'],
+				'etag'    => $result['etag'],
+				'section' => $section,
+			)
+		);
 	}
 
 	private function tool_search_memory( array $args ): array {
@@ -766,61 +867,82 @@ class MCPEndpoint {
 
 		$this->audit_log->record( 'search_memory', $user_id, Auth::get_current_client_name(), '', $query, $context );
 
-		return $this->tool_success( [ 'results' => $results, 'count' => count( $results ) ] );
+		return $this->tool_success(
+			array(
+				'results' => $results,
+				'count'   => count( $results ),
+			)
+		);
 	}
 
-	// -----------------------------------------------------------------------
-	// Response helpers
-	// -----------------------------------------------------------------------
-
 	private function tool_success( array $data ): array {
-		return [
-			'content' => [ [ 'type' => 'text', 'text' => wp_json_encode( $data ) ] ],
-		];
+		return array(
+			'content' => array(
+				array(
+					'type' => 'text',
+					'text' => wp_json_encode( $data ),
+				),
+			),
+		);
 	}
 
 	private function tool_error( string $code, string $message, int $status = 400 ): array {
-		return [
+		return array(
 			'isError' => true,
-			'content' => [ [ 'type' => 'text', 'text' => wp_json_encode( [ 'code' => $code, 'message' => $message ] ) ] ],
-		];
+			'content' => array(
+				array(
+					'type' => 'text',
+					'text' => wp_json_encode(
+						array(
+							'code'    => $code,
+							'message' => $message,
+						)
+					),
+				),
+			),
+		);
 	}
 
 	private function rpc_error( int $code, string $message, int $http_status = 400 ): array {
-		return [
+		return array(
 			'__rpc_error' => true,
-			'error'       => [ 'code' => $code, 'message' => $message ],
-		];
+			'error'       => array(
+				'code'    => $code,
+				'message' => $message,
+			),
+		);
 	}
 
-	private function error_response( ?int $id, int $code, string $message, int $http_status = 400, array $data = [] ): \WP_REST_Response {
-		$error = [ 'code' => $code, 'message' => $message ];
+	private function error_response( ?int $id, int $code, string $message, int $http_status = 400, array $data = array() ): \WP_REST_Response {
+		$error = array(
+			'code'    => $code,
+			'message' => $message,
+		);
 		if ( $data ) {
 			$error['data'] = $data;
 		}
 
-		return new \WP_REST_Response( [
-			'jsonrpc' => '2.0',
-			'id'      => $id,
-			'error'   => $error,
-		], $http_status );
+		return new \WP_REST_Response(
+			array(
+				'jsonrpc' => '2.0',
+				'id'      => $id,
+				'error'   => $error,
+			),
+			$http_status
+		);
 	}
-
-	// -----------------------------------------------------------------------
-	// CORS
-	// -----------------------------------------------------------------------
 
 	private function set_cors_headers(): void {
 		$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 
 		if ( $origin !== '' ) {
-			$settings        = get_option( 'pressocampus_settings', [] );
+			$settings        = get_option( 'pressocampus_settings', array() );
 			$allowed_origins = array_filter(
 				array_map( 'trim', explode( "\n", $settings['cors_origins'] ?? '' ) )
 			);
 
 			$site_origin    = wp_parse_url( home_url(), PHP_URL_SCHEME ) . '://' . wp_parse_url( home_url(), PHP_URL_HOST );
-			$always_allowed = [ $site_origin ];
+			$always_allowed = array( $site_origin );
 
 			if ( in_array( $origin, $allowed_origins, true ) || in_array( $origin, $always_allowed, true ) ) {
 				header( 'Access-Control-Allow-Origin: ' . $origin );

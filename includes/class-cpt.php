@@ -25,10 +25,6 @@ class CPT {
 		add_filter( 'wp_revisions_to_keep', array( $this, 'cap_revisions' ), 10, 2 );
 	}
 
-	// -----------------------------------------------------------------------
-	// Registration
-	// -----------------------------------------------------------------------
-
 	public function register_cpt(): void {
 		register_post_type(
 			PRESSOCAMPUS_CPT,
@@ -208,10 +204,6 @@ class CPT {
 		);
 	}
 
-	// -----------------------------------------------------------------------
-	// Save hook
-	// -----------------------------------------------------------------------
-
 	public function on_save_post( int $post_id, \WP_Post $post, bool $update ): void {
 		// Skip auto-saves and revisions.
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
@@ -234,10 +226,6 @@ class CPT {
 		do_action( 'pressocampus_memory_changed', $post_id, (int) $post->post_author );
 	}
 
-	// -----------------------------------------------------------------------
-	// Revision cap
-	// -----------------------------------------------------------------------
-
 	public function cap_revisions( int $num, \WP_Post $post ): int {
 		if ( $post->post_type !== PRESSOCAMPUS_CPT ) {
 			return $num;
@@ -252,10 +240,6 @@ class CPT {
 
 		return 5;
 	}
-
-	// -----------------------------------------------------------------------
-	// Expiry cron
-	// -----------------------------------------------------------------------
 
 	public function expire_old_memories(): void {
 		$q = new \WP_Query(
@@ -291,10 +275,6 @@ class CPT {
 			}
 		}
 	}
-
-	// -----------------------------------------------------------------------
-	// Static helpers
-	// -----------------------------------------------------------------------
 
 	/**
 	 * Generate a new memory URI: pressocampus://{host}/memory/{uuid4}

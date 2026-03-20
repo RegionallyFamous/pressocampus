@@ -37,17 +37,13 @@ class Auth {
 		add_filter( 'rest_authentication_errors', array( $this, 'authenticate_request' ) );
 	}
 
-	// -----------------------------------------------------------------------
 	// Setter injection (called from Plugin after both objects are constructed)
-	// -----------------------------------------------------------------------
 
 	public function set_oauth_server( OAuthServer $server ): void {
 		$this->oauth_server = $server;
 	}
 
-	// -----------------------------------------------------------------------
 	// rest_authentication_errors filter
-	// -----------------------------------------------------------------------
 
 	/**
 	 * Intercept requests to the pressocampus/v1 namespace.
@@ -94,10 +90,6 @@ class Auth {
 		return null; // null = allow the request to proceed
 	}
 
-	// -----------------------------------------------------------------------
-	// Static accessors
-	// -----------------------------------------------------------------------
-
 	public static function get_current_user_id(): int {
 		return static::$current_user_id;
 	}
@@ -110,9 +102,7 @@ class Auth {
 		return static::$current_token_id;
 	}
 
-	// -----------------------------------------------------------------------
 	// Test helpers (not used in production — set/clear auth state directly)
-	// -----------------------------------------------------------------------
 
 	/**
 	 * Bypass OAuth validation in unit tests by setting auth state directly.
@@ -132,10 +122,6 @@ class Auth {
 		wp_set_current_user( 0 );
 	}
 
-	// -----------------------------------------------------------------------
-	// Rate limiting
-	// -----------------------------------------------------------------------
-
 	/**
 	 * Check whether the current token is under its per-minute rate limit.
 	 *
@@ -151,20 +137,10 @@ class Auth {
 		return $this->cache->check_rate_limit( $type, $token_id );
 	}
 
-	// -----------------------------------------------------------------------
-	// Helpers
-	// -----------------------------------------------------------------------
-
-	/**
-	 * Get the site hostname, used when constructing URIs.
-	 */
 	public static function get_site_host(): string {
 		return (string) ( wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost' );
 	}
 
-	/**
-	 * Build a 401 WP_Error that also carries the authorization endpoint URL.
-	 */
 	public static function unauthorized_error(
 		string $code = 'pressocampus_auth_required',
 		string $message = ''
@@ -182,10 +158,6 @@ class Auth {
 			)
 		);
 	}
-
-	// -----------------------------------------------------------------------
-	// Private
-	// -----------------------------------------------------------------------
 
 	/**
 	 * Extract the raw Bearer token from the Authorization header.

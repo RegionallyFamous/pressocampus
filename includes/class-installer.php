@@ -15,17 +15,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Installer {
 
 	public static function activate(): void {
-		// 1. Check sodium extension — store result in option
 		if ( ! extension_loaded( 'sodium' ) ) {
 			update_option( 'pressocampus_sodium_missing', true );
 		} else {
 			delete_option( 'pressocampus_sodium_missing' );
 		}
 
-		// 2. Create custom role
-		add_role( 'pressocampus_agent', 'Pressocampus Agent', [] );
+		add_role( 'pressocampus_agent', 'Pressocampus Agent', array() );
 
-		// 3. Create pressocampus_service user (only if not exists)
 		if ( ! username_exists( 'pressocampus_service' ) ) {
 			$user_id = wp_create_user(
 				'pressocampus_service',
@@ -39,13 +36,12 @@ class Installer {
 			}
 		}
 
-		// 4. Generate RSA key pair (only if not already present)
 		if ( ! get_option( 'pressocampus_rsa_private_key' ) ) {
-			$config = [
+			$config      = array(
 				'digest_alg'       => 'sha256',
 				'private_key_bits' => 2048,
 				'private_key_type' => OPENSSL_KEYTYPE_RSA,
-			];
+			);
 			$res         = openssl_pkey_new( $config );
 			$private_key = '';
 			if ( $res && openssl_pkey_export( $res, $private_key ) && $private_key !== '' ) {
@@ -55,18 +51,16 @@ class Installer {
 					update_option( 'pressocampus_rsa_public_key', $public_key_details['key'] );
 				}
 			} else {
-				// Persist the error so the admin notice in Onboarding can surface it.
-				update_option(
-					'pressocampus_migration_error',
-					'Failed to generate or export RSA key pair. OAuth will not work until this is resolved. Check that the openssl extension is available.'
-				);
+						update_option(
+							'pressocampus_migration_error',
+							'Failed to generate or export RSA key pair. OAuth will not work until this is resolved. Check that the openssl extension is available.'
+						);
 			}
 		}
 
-		// 5. Create DB tables
 		self::run_migrations();
 
-		// 6. Schedule cron events (activation runs once, so no race condition).
+		// Schedule once; avoids duplicates if activate() is somehow re-called.
 		if ( ! wp_next_scheduled( 'pressocampus_check_token_expiry' ) ) {
 			wp_schedule_event( time(), 'daily', 'pressocampus_check_token_expiry' );
 		}
@@ -74,7 +68,6 @@ class Installer {
 			wp_schedule_event( time(), 'hourly', 'pressocampus_expire_memories' );
 		}
 
-		// 7. Set welcome transient + flush rewrite rules
 		set_transient( 'pressocampus_show_welcome', true, 30 );
 		flush_rewrite_rules();
 	}

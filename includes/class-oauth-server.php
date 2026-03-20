@@ -34,62 +34,56 @@ class OAuthServer {
 	private const REST_NAMESPACE = 'pressocampus/v1';
 
 	private ?AuthorizationServer $authorization_server = null;
-	private ?ResourceServer      $resource_server       = null;
+	private ?ResourceServer $resource_server           = null;
 
 	public function __construct(
-		private Auth     $auth,
+		private Auth $auth,
 		private AuditLog $audit_log,
 	) {
-		add_action( 'rest_api_init', [ $this, 'register_routes' ] );
-		add_action( 'parse_request', [ $this, 'handle_well_known' ] );
+		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		add_action( 'parse_request', array( $this, 'handle_well_known' ) );
 	}
-
-	// -----------------------------------------------------------------------
-	// Route registration
-	// -----------------------------------------------------------------------
 
 	public function register_routes(): void {
 		register_rest_route(
 			self::REST_NAMESPACE,
 			'/oauth/register',
-			[
+			array(
 				'methods'             => 'POST',
-				'callback'            => [ $this, 'handle_register' ],
+				'callback'            => array( $this, 'handle_register' ),
 				'permission_callback' => '__return_true',
-			]
+			)
 		);
 
 		register_rest_route(
 			self::REST_NAMESPACE,
 			'/oauth/authorize',
-			[
-				[
+			array(
+				array(
 					'methods'             => 'GET',
-					'callback'            => [ $this, 'handle_authorize_form' ],
+					'callback'            => array( $this, 'handle_authorize_form' ),
 					'permission_callback' => '__return_true',
-				],
-				[
+				),
+				array(
 					'methods'             => 'POST',
-					'callback'            => [ $this, 'handle_authorize_submit' ],
+					'callback'            => array( $this, 'handle_authorize_submit' ),
 					'permission_callback' => '__return_true',
-				],
-			]
+				),
+			)
 		);
 
 		register_rest_route(
 			self::REST_NAMESPACE,
 			'/oauth/token',
-			[
+			array(
 				'methods'             => 'POST',
-				'callback'            => [ $this, 'handle_token' ],
+				'callback'            => array( $this, 'handle_token' ),
 				'permission_callback' => '__return_true',
-			]
+			)
 		);
 	}
 
-	// -----------------------------------------------------------------------
 	// /.well-known/oauth-authorization-server
-	// -----------------------------------------------------------------------
 
 	public function handle_well_known(): void {
 		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
@@ -101,17 +95,17 @@ class OAuthServer {
 
 		$base = rest_url( self::REST_NAMESPACE . '/oauth' );
 
-		$document = [
+		$document = array(
 			'issuer'                                => home_url(),
 			'authorization_endpoint'                => $base . '/authorize',
 			'token_endpoint'                        => $base . '/token',
 			'registration_endpoint'                 => $base . '/register',
-			'response_types_supported'              => [ 'code' ],
-			'grant_types_supported'                 => [ 'authorization_code', 'refresh_token' ],
-			'code_challenge_methods_supported'      => [ 'S256' ],
-			'scopes_supported'                      => [ PRESSOCAMPUS_SCOPE ],
-			'token_endpoint_auth_methods_supported' => [ 'client_secret_post', 'none' ],
-		];
+			'response_types_supported'              => array( 'code' ),
+			'grant_types_supported'                 => array( 'authorization_code', 'refresh_token' ),
+			'code_challenge_methods_supported'      => array( 'S256' ),
+			'scopes_supported'                      => array( PRESSOCAMPUS_SCOPE ),
+			'token_endpoint_auth_methods_supported' => array( 'client_secret_post', 'none' ),
+		);
 
 		nocache_headers();
 		header( 'Content-Type: application/json; charset=utf-8' );
@@ -119,9 +113,7 @@ class OAuthServer {
 		exit;
 	}
 
-	// -----------------------------------------------------------------------
 	// POST /oauth/register  — RFC 7591 dynamic client registration
-	// -----------------------------------------------------------------------
 
 	public function handle_register( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
 		// Rate-limit dynamic client registration: 10 registrations per IP per hour.
@@ -134,7 +126,7 @@ class OAuthServer {
 			return new \WP_Error(
 				'too_many_requests',
 				'Too many client registration attempts from this address. Please try again later.',
-				[ 'status' => 429 ]
+				array( 'status' => 429 )
 			);
 		}
 
@@ -142,13 +134,13 @@ class OAuthServer {
 
 		$params      = $request->get_json_params() ?: $request->get_body_params();
 		$client_name = sanitize_text_field( $params['client_name'] ?? '' );
-		$raw_uris    = $params['redirect_uris'] ?? [];
+		$raw_uris    = $params['redirect_uris'] ?? array();
 
 		if ( $client_name === '' ) {
 			return new \WP_Error(
 				'invalid_client_metadata',
 				'client_name is required.',
-				[ 'status' => 400 ]
+				array( 'status' => 400 )
 			);
 		}
 
@@ -156,7 +148,7 @@ class OAuthServer {
 			return new \WP_Error(
 				'invalid_client_metadata',
 				'redirect_uris must be a non-empty array.',
-				[ 'status' => 400 ]
+				array( 'status' => 400 )
 			);
 		}
 
@@ -171,7 +163,7 @@ class OAuthServer {
 			return new \WP_Error(
 				'invalid_client_metadata',
 				'At least one valid redirect_uri is required.',
-				[ 'status' => 400 ]
+				array( 'status' => 400 )
 			);
 		}
 
@@ -185,34 +177,38 @@ class OAuthServer {
 			get_current_user_id()
 		);
 
-		$response_body = [
+		$response_body = array(
 			'client_id'                  => $result['client_id'],
 			'client_name'                => $client_name,
 			'redirect_uris'              => $redirect_uris,
-			'grant_types'                => [ 'authorization_code', 'refresh_token' ],
+			'grant_types'                => array( 'authorization_code', 'refresh_token' ),
 			'token_endpoint_auth_method' => $is_confidential ? 'client_secret_post' : 'none',
 			'scope'                      => PRESSOCAMPUS_SCOPE,
-		];
+		);
 
 		if ( $is_confidential ) {
 			$response_body['client_secret'] = $result['client_secret'];
 		}
 
-		$this->audit_log->log( 'oauth_client_registered', [ 'client_id' => $result['client_id'], 'name' => $client_name ] );
+		$this->audit_log->log(
+			'oauth_client_registered',
+			array(
+				'client_id' => $result['client_id'],
+				'name'      => $client_name,
+			)
+		);
 
 		return new \WP_REST_Response( $response_body, 201 );
 	}
 
-	// -----------------------------------------------------------------------
 	// GET /oauth/authorize  — show the consent screen
-	// -----------------------------------------------------------------------
 
 	public function handle_authorize_form( \WP_REST_Request $request ): void {
 		$params = $request->get_query_params();
 
-		$client_id            = sanitize_text_field( $params['client_id'] ?? '' );
-		$redirect_uri         = esc_url_raw( $params['redirect_uri'] ?? '' );
-		$state                = sanitize_text_field( $params['state'] ?? '' );
+		$client_id             = sanitize_text_field( $params['client_id'] ?? '' );
+		$redirect_uri          = esc_url_raw( $params['redirect_uri'] ?? '' );
+		$state                 = sanitize_text_field( $params['state'] ?? '' );
 		$code_challenge        = sanitize_text_field( $params['code_challenge'] ?? '' );
 		$code_challenge_method = sanitize_text_field( $params['code_challenge_method'] ?? 'S256' );
 		$response_type         = sanitize_text_field( $params['response_type'] ?? 'code' );
@@ -224,7 +220,7 @@ class OAuthServer {
 			wp_die(
 				esc_html__( 'Unknown OAuth client.', 'pressocampus' ),
 				esc_html__( 'Authorization Error', 'pressocampus' ),
-				[ 'response' => 400 ]
+				array( 'response' => 400 )
 			);
 		}
 
@@ -233,7 +229,7 @@ class OAuthServer {
 			wp_die(
 				esc_html__( 'Invalid redirect_uri.', 'pressocampus' ),
 				esc_html__( 'Authorization Error', 'pressocampus' ),
-				[ 'response' => 400 ]
+				array( 'response' => 400 )
 			);
 		}
 
@@ -257,34 +253,37 @@ class OAuthServer {
 		$username     = esc_html( $current_user->display_name ?: $current_user->user_login );
 
 		// Hidden fields to pass through the OAuth parameters.
-		$hidden_fields = $this->build_hidden_fields( [
-			'client_id'             => $client_id,
-			'redirect_uri'          => $redirect_uri,
-			'state'                 => $state,
-			'code_challenge'        => $code_challenge,
-			'code_challenge_method' => $code_challenge_method,
-			'response_type'         => $response_type,
-			'scope'                 => $scope,
-			'_wpnonce'              => $nonce,
-		] );
+		$hidden_fields = $this->build_hidden_fields(
+			array(
+				'client_id'             => $client_id,
+				'redirect_uri'          => $redirect_uri,
+				'state'                 => $state,
+				'code_challenge'        => $code_challenge,
+				'code_challenge_method' => $code_challenge_method,
+				'response_type'         => $response_type,
+				'scope'                 => $scope,
+				'_wpnonce'              => $nonce,
+			)
+		);
 
 		nocache_headers();
 		header( 'Content-Type: text/html; charset=utf-8' );
 
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- render_consent_page returns fully escaped HTML
-		echo $this->render_consent_page( [
-			'site_name'     => esc_html( $site_name ),
-			'client_name'   => esc_html( $client_name ),
-			'username'      => esc_html( $username ),
-			'hidden_fields' => $hidden_fields,
-		] );
+		// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- render_consent_page returns fully escaped HTML; hidden_fields is built by build_hidden_fields() which escapes each value with esc_attr()
+		echo $this->render_consent_page(
+			array(
+				'site_name'     => esc_html( $site_name ),
+				'client_name'   => esc_html( $client_name ),
+				'username'      => esc_html( $username ),
+				'hidden_fields' => $hidden_fields,
+			)
+		);
+		// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
 
 		exit;
 	}
 
-	// -----------------------------------------------------------------------
 	// POST /oauth/authorize  — process the consent form submission
-	// -----------------------------------------------------------------------
 
 	public function handle_authorize_submit( \WP_REST_Request $request ): void {
 		$params    = $request->get_body_params();
@@ -295,7 +294,7 @@ class OAuthServer {
 			wp_die(
 				esc_html__( 'Security check failed. Please try again.', 'pressocampus' ),
 				esc_html__( 'Authorization Error', 'pressocampus' ),
-				[ 'response' => 403 ]
+				array( 'response' => 403 )
 			);
 		}
 
@@ -303,7 +302,7 @@ class OAuthServer {
 			wp_die(
 				esc_html__( 'You must be logged in to authorize this request.', 'pressocampus' ),
 				esc_html__( 'Authorization Error', 'pressocampus' ),
-				[ 'response' => 401 ]
+				array( 'response' => 401 )
 			);
 		}
 
@@ -313,11 +312,13 @@ class OAuthServer {
 		// User clicked Deny.
 		if ( isset( $params['deny'] ) ) {
 			$redirect = add_query_arg(
-				array_filter( [
-					'error'             => 'access_denied',
-					'error_description' => 'The user denied access.',
-					'state'             => $state,
-				] ),
+				array_filter(
+					array(
+						'error'             => 'access_denied',
+						'error_description' => 'The user denied access.',
+						'state'             => $state,
+					)
+				),
 				$redirect_uri
 			);
 			wp_safe_redirect( $redirect );
@@ -326,7 +327,7 @@ class OAuthServer {
 
 		// User clicked Allow — build PSR-7 request from the POST-ed OAuth params
 		// and run it through the AuthorizationServer.
-		$oauth_params = [
+		$oauth_params = array(
 			'response_type'         => sanitize_text_field( $params['response_type'] ?? 'code' ),
 			'client_id'             => $client_id,
 			'redirect_uri'          => $redirect_uri,
@@ -334,13 +335,13 @@ class OAuthServer {
 			'state'                 => $state,
 			'code_challenge'        => sanitize_text_field( $params['code_challenge'] ?? '' ),
 			'code_challenge_method' => sanitize_text_field( $params['code_challenge_method'] ?? 'S256' ),
-		];
+		);
 
 		// league/oauth2-server reads these from getQueryParams().
 		$psr_request = ( new OAuth\WPServerRequest(
 			'GET',
 			rest_url( self::REST_NAMESPACE . '/oauth/authorize' ) . '?' . http_build_query( $oauth_params ),
-			[],
+			array(),
 			$_SERVER,
 			$oauth_params,
 			null,
@@ -362,14 +363,17 @@ class OAuthServer {
 				wp_die(
 					esc_html__( 'OAuth server did not return a redirect location.', 'pressocampus' ),
 					'',
-					[ 'response' => 500 ]
+					array( 'response' => 500 )
 				);
 			}
 
-			$this->audit_log->log( 'oauth_authorized', [
-				'client_id' => $client_id,
-				'user_id'   => get_current_user_id(),
-			] );
+			$this->audit_log->log(
+				'oauth_authorized',
+				array(
+					'client_id' => $client_id,
+					'user_id'   => get_current_user_id(),
+				)
+			);
 
 			wp_safe_redirect( $location );
 			exit;
@@ -378,11 +382,13 @@ class OAuthServer {
 			// Do not forward getHint() — it can expose internal SQL fragments,
 			// stack traces, or token values to the redirect target.
 			$redirect = add_query_arg(
-				array_filter( [
-					'error'             => $e->getErrorType(),
-					'error_description' => $e->getMessage(),
-					'state'             => $state,
-				] ),
+				array_filter(
+					array(
+						'error'             => $e->getErrorType(),
+						'error_description' => $e->getMessage(),
+						'state'             => $state,
+					)
+				),
 				$redirect_uri
 			);
 			wp_safe_redirect( $redirect );
@@ -390,9 +396,7 @@ class OAuthServer {
 		}
 	}
 
-	// -----------------------------------------------------------------------
 	// POST /oauth/token  — exchange code / refresh token for tokens
-	// -----------------------------------------------------------------------
 
 	public function handle_token( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
 		try {
@@ -409,10 +413,13 @@ class OAuthServer {
 				$wp_response->header( $header_name, implode( ', ', $values ) );
 			}
 
-			$this->audit_log->log( 'oauth_token_issued', [
-				'client_id'  => $body['client_id'] ?? '',
-				'grant_type' => $request->get_param( 'grant_type' ),
-			] );
+			$this->audit_log->log(
+				'oauth_token_issued',
+				array(
+					'client_id'  => $body['client_id'] ?? '',
+					'grant_type' => $request->get_param( 'grant_type' ),
+				)
+			);
 
 			return $wp_response;
 
@@ -423,9 +430,7 @@ class OAuthServer {
 		}
 	}
 
-	// -----------------------------------------------------------------------
 	// Token expiry notifications (called by cron)
-	// -----------------------------------------------------------------------
 
 	public function notify_expiring_tokens(): void {
 		global $wpdb;
@@ -472,19 +477,15 @@ class OAuthServer {
 			if ( ! $sent ) {
 				update_option(
 					'pressocampus_expiry_notice_' . $token->client_id,
-					[
+					array(
 						'token_id'    => $token->id,
 						'client_name' => $token->client_name,
 						'noticed_at'  => current_time( 'mysql', true ),
-					]
+					)
 				);
 			}
 		}
 	}
-
-	// -----------------------------------------------------------------------
-	// Server builders
-	// -----------------------------------------------------------------------
 
 	public function get_authorization_server(): AuthorizationServer {
 		if ( $this->authorization_server instanceof AuthorizationServer ) {
@@ -542,7 +543,7 @@ class OAuthServer {
 			return $this->resource_server;
 		}
 
-		$public_key_pem = (string) get_option( 'pressocampus_rsa_public_key', '' );
+		$public_key_pem   = (string) get_option( 'pressocampus_rsa_public_key', '' );
 		$public_crypt_key = new CryptKey( $public_key_pem, null, false );
 
 		$this->resource_server = new ResourceServer(
@@ -552,10 +553,6 @@ class OAuthServer {
 
 		return $this->resource_server;
 	}
-
-	// -----------------------------------------------------------------------
-	// Bearer token validation (called by Auth)
-	// -----------------------------------------------------------------------
 
 	/**
 	 * Validate a Bearer token extracted from an Authorization header.
@@ -569,35 +566,31 @@ class OAuthServer {
 			$validated_request = $this->get_resource_server()->validateAuthenticatedRequest( $psr_request );
 
 			$token_id  = (string) ( $validated_request->getAttribute( 'oauth_access_token_id' ) ?? '' );
-			$user_id   = (int)    ( $validated_request->getAttribute( 'oauth_user_id' ) ?? 0 );
+			$user_id   = (int) ( $validated_request->getAttribute( 'oauth_user_id' ) ?? 0 );
 			$client_id = (string) ( $validated_request->getAttribute( 'oauth_client_id' ) ?? '' );
 
 			$client_name = $this->get_client_name( $client_id );
 
-			return [
+			return array(
 				'user_id'     => $user_id,
 				'client_name' => $client_name,
 				'token_id'    => $token_id,
-			];
+			);
 
 		} catch ( OAuthServerException $e ) {
 			return new \WP_Error(
 				'pressocampus_token_invalid',
 				$e->getMessage(),
-				[ 'status' => $e->getHttpStatusCode() ]
+				array( 'status' => $e->getHttpStatusCode() )
 			);
 		} catch ( \Throwable $e ) {
 			return new \WP_Error(
 				'pressocampus_token_error',
 				'Token validation failed.',
-				[ 'status' => 401 ]
+				array( 'status' => 401 )
 			);
 		}
 	}
-
-	// -----------------------------------------------------------------------
-	// Helpers
-	// -----------------------------------------------------------------------
 
 	private function get_client_name( string $client_id ): string {
 		if ( $client_id === '' ) {
