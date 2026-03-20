@@ -161,4 +161,4 @@ All memory content is sanitized before storage:
 
 ## Responsible disclosure
 
-If you find a security vulnerability in Pressocampus, please report it privately by opening a [GitHub Security Advisory](https://github.com/pressocampus/pressocampus/security/advisories/new) rather than a public issue.
+If you find a security vulnerability in Pressocampus, please report it privately by opening a [GitHub Security Advisory](https://github.com/RegionallyFamous/pressocampus/security/advisories/new) rather than a public issue.

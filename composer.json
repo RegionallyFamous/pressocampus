@@ -1,6 +1,7 @@
 {
     "name": "pressocampus/pressocampus",
     "description": "Turn WordPress into your AI's persistent memory store",
+    "version": "1.0.0",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "require": {

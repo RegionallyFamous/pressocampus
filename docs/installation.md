@@ -8,7 +8,7 @@
 
 | Requirement | Minimum | Notes |
 |------------|---------|-------|
-| WordPress | 7.0 | Earlier versions are untested |
+| WordPress | 6.4 | Earlier versions are untested |
 | PHP | 8.3 | Typed properties, `json_validate()`, `sodium` extension |
 | PHP extensions | `openssl`, `sodium` | Both are standard on any modern host |
 | HTTPS | Required | OAuth 2.1 requires a secure origin |
@@ -40,7 +40,7 @@ The one hard requirement is **HTTPS**. If your site doesn't have an SSL certific
 
 ### Option 1 — WordPress admin (recommended for most people)
 
-1. Go to [Releases](https://github.com/pressocampus/pressocampus/releases) and download `pressocampus-{version}.zip`
+1. Go to [Releases](https://github.com/RegionallyFamous/pressocampus/releases) and download `pressocampus-{version}.zip`
 2. In your WordPress admin: `Plugins → Add New → Upload Plugin`
 3. Choose the zip file and click **Install Now**
 4. Click **Activate Plugin**
@@ -51,7 +51,7 @@ You'll be automatically redirected to the Pressocampus Settings page.
 
 ```bash
 # Install and activate from the latest GitHub release
-wp plugin install https://github.com/pressocampus/pressocampus/releases/latest/download/pressocampus.zip --activate
+wp plugin install https://github.com/RegionallyFamous/pressocampus/releases/latest/download/pressocampus.zip --activate
 
 # Verify
 wp plugin list --name=pressocampus

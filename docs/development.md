@@ -19,7 +19,7 @@ This guide covers setting up a local development environment, running the build 
 
 ```bash
 # Clone the repo
-git clone https://github.com/pressocampus/pressocampus.git
+git clone https://github.com/RegionallyFamous/pressocampus.git
 cd pressocampus
 
 # Install PHP dependencies
@@ -65,7 +65,8 @@ pressocampus/
 │   └── install-wp-tests.sh   PHPUnit WordPress test suite installer
 ├── tests/
 │   ├── bootstrap.php         PHPUnit bootstrap
-│   └── test-mcp-dispatcher.php  Integration tests
+│   ├── class-testcase.php    Custom base class (bypasses WP_UnitTestCase for PHPUnit 12 compat)
+│   └── MCPDispatcherTest.php Integration tests
 ├── languages/                Translation strings
 ├── .phpcs.xml                PHPCS configuration
 ├── phpstan.neon              PHPStan configuration
@@ -146,7 +147,7 @@ make test-coverage
 
 ### Test coverage
 
-Tests live in `tests/test-mcp-dispatcher.php` and cover:
+Tests live in `tests/MCPDispatcherTest.php` and cover:
 - MCP `initialize` handshake
 - All 6 MCP tools (success and error cases)
 - Rate limiting behavior
@@ -198,7 +199,7 @@ Every push and pull request runs the full pipeline via GitHub Actions (`.github/
 3. **Test** — PHPUnit matrix:
    - PHP 8.3 + WordPress latest
    - PHP 8.4 + WordPress latest
-   - PHP 8.3 + WordPress 7.0
+   - PHP 8.3 + WordPress 6.7
 4. **Build** — creates distributable zip on merge to `main`
 
 ---
@@ -222,7 +223,7 @@ The version is read from the `Version:` header in `pressocampus.php`.
 
 ### Reporting bugs
 
-Open a [GitHub Issue](https://github.com/pressocampus/pressocampus/issues) with:
+Open a [GitHub Issue](https://github.com/RegionallyFamous/pressocampus/issues) with:
 - WordPress version
 - PHP version
 - Steps to reproduce

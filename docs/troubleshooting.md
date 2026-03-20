@@ -259,7 +259,7 @@ If these return 404, flush rewrite rules: `wp rewrite flush`
 
 If you can't resolve an issue:
 
-1. Search [existing issues](https://github.com/pressocampus/pressocampus/issues) — someone may have had the same problem
+1. Search [existing issues](https://github.com/RegionallyFamous/pressocampus/issues) — someone may have had the same problem
 2. Open a new issue with:
    - WordPress version (`wp core version`)
    - PHP version (`php -v`)

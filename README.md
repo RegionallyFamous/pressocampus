@@ -10,7 +10,7 @@
 
 <br>
 
-[![CI](https://github.com/pressocampus/pressocampus/actions/workflows/ci.yml/badge.svg)](https://github.com/pressocampus/pressocampus/actions)
+[![CI](https://github.com/RegionallyFamous/pressocampus/actions/workflows/ci.yml/badge.svg)](https://github.com/RegionallyFamous/pressocampus/actions)
 [![PHP 8.3+](https://img.shields.io/badge/PHP-8.3%2B-777bb4?logo=php&logoColor=white)](https://php.net)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org)
 [![MCP 2025-03-26](https://img.shields.io/badge/MCP-2025--03--26-6366f1)](https://modelcontextprotocol.io)
