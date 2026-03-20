@@ -230,11 +230,11 @@ CSS;
 
 					<div class="pc-row" style="margin-top:10px">
 						<?php
-						$starter = sprintf(
-							/* translators: %s: site name */
-							__( "I've connected my memory store at %s. Please read my soul first — it defines who I am and how I like to communicate.", 'pressocampus' ),
-							$site_name
-						);
+					$starter = sprintf(
+						/* translators: %s: site name */
+						__( "I've just connected my memory store at %s to this conversation. Please introduce yourself, explain what you can now do with my memory store, then read my soul and tell me what you learned about me before we begin.", 'pressocampus' ),
+						$site_name
+					);
 						?>
 						<button class="pc-btn secondary" onclick="pcCopy(<?php echo wp_json_encode( $starter ); ?>, this)"><?php esc_html_e( 'Copy Starter Prompt', 'pressocampus' ); ?></button>
 					</div>
