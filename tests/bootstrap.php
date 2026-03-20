@@ -26,6 +26,11 @@ if ( ! file_exists( $_polyfills_autoload ) ) {
 }
 require_once $_polyfills_autoload;
 
+// Load our custom base test case (extends polyfill TestCase, NOT WP_UnitTestCase,
+// to avoid PHPUnit\Util\Test::parseTestMethodAnnotations() which was removed in
+// PHPUnit 10 but is still called unconditionally by the WP test library).
+require_once __DIR__ . '/class-testcase.php';
+
 if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
 	echo "Could not find WordPress test library in {$_tests_dir}\n";
 	echo "Set WP_TESTS_DIR or install via bin/install-wp-tests.sh.\n";

@@ -372,7 +372,7 @@ endif; // class_exists
  * @covers \Pressocampus\Soul
  * @covers \Pressocampus\ResourceIndex
  */
-class MCPDispatcherTest extends \WP_UnitTestCase {
+class MCPDispatcherTest extends TestCase {
 
 	private Pressocampus_Test_Dispatcher $dispatcher;
 	private ResourceIndex                $index;
@@ -380,8 +380,8 @@ class MCPDispatcherTest extends \WP_UnitTestCase {
 	private CPT                          $cpt;
 	private int                          $user_id;
 
-	protected function setUp(): void {
-		parent::setUp();
+	protected function set_up(): void {
+		parent::set_up();
 
 		$plugin       = Plugin::get_instance();
 		$this->index  = $plugin->get_resource_index();
