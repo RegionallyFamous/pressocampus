@@ -5,7 +5,7 @@
     bootstrap="tests/bootstrap.php"
     colors="true"
     stopOnFailure="false"
-    cacheResultFile=".phpunit.cache/result.cache"
+    cacheDirectory=".phpunit.cache"
 >
     <testsuites>
         <testsuite name="Pressocampus">
@@ -13,7 +13,7 @@
         </testsuite>
     </testsuites>
 
-    <coverage>
+    <source>
         <include>
             <directory suffix=".php">includes/</directory>
         </include>
@@ -22,7 +22,9 @@
             <directory>tests/</directory>
             <directory>build/</directory>
         </exclude>
-    </coverage>
+    </source>
+
+    <coverage/>
 
     <php>
         <env name="WP_TESTS_DIR" value="/tmp/wordpress-tests-lib"/>
@@ -32,4 +34,5 @@
     <logging>
         <junit outputFile="build/phpunit-results.xml"/>
     </logging>
+
 </phpunit>

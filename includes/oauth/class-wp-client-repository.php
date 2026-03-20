@@ -41,9 +41,9 @@ class WPClientRepository implements ClientRepositoryInterface {
 	private const ALLOWED_GRANTS = array( 'authorization_code', 'refresh_token' );
 
 	public function validateClient(
-		mixed $clientId,
-		mixed $clientSecret,
-		mixed $grantType
+		string $clientId,
+		?string $clientSecret,
+		?string $grantType
 	): bool {
 		global $wpdb;
 
@@ -83,7 +83,7 @@ class WPClientRepository implements ClientRepositoryInterface {
 		return true;
 	}
 
-	public function getClientEntity( mixed $clientId ): ?ClientEntityInterface {
+	public function getClientEntity( string $clientId ): ?ClientEntityInterface {
 		global $wpdb;
 
 		$row = $wpdb->get_row(

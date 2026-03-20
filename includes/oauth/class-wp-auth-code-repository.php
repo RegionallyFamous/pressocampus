@@ -54,7 +54,7 @@ class WPAuthCodeRepository implements AuthCodeRepositoryInterface {
 		);
 	}
 
-	public function revokeAuthCode( mixed $codeId ): void {
+	public function revokeAuthCode( string $codeId ): void {
 		global $wpdb;
 
 		$wpdb->update(
@@ -69,7 +69,7 @@ class WPAuthCodeRepository implements AuthCodeRepositoryInterface {
 		);
 	}
 
-	public function isAuthCodeRevoked( mixed $codeId ): bool {
+	public function isAuthCodeRevoked( string $codeId ): bool {
 		global $wpdb;
 
 		$revoked = $wpdb->get_var(

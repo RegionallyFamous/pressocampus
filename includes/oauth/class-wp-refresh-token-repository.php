@@ -32,11 +32,9 @@ class WPRefreshTokenRepository implements RefreshTokenRepositoryInterface {
 		global $wpdb;
 
 		$access_token   = $refreshTokenEntity->getAccessToken();
-		$access_user_id = $access_token ? (int) $access_token->getUserIdentifier() : 0;
-		$access_scopes  = $access_token
-			? implode( ' ', array_map( fn( $s ) => $s->getIdentifier(), $access_token->getScopes() ) )
-			: '';
-		$client_id      = $access_token ? $access_token->getClient()->getIdentifier() : '';
+		$access_user_id = (int) $access_token->getUserIdentifier();
+		$access_scopes  = implode( ' ', array_map( fn( $s ) => $s->getIdentifier(), $access_token->getScopes() ) );
+		$client_id      = $access_token->getClient()->getIdentifier();
 
 		$wpdb->insert(
 			$wpdb->prefix . 'pressocampus_oauth_tokens',
@@ -54,7 +52,7 @@ class WPRefreshTokenRepository implements RefreshTokenRepositoryInterface {
 		);
 	}
 
-	public function revokeRefreshToken( mixed $tokenId ): void {
+	public function revokeRefreshToken( string $tokenId ): void {
 		global $wpdb;
 
 		$wpdb->update(
@@ -69,7 +67,7 @@ class WPRefreshTokenRepository implements RefreshTokenRepositoryInterface {
 		);
 	}
 
-	public function isRefreshTokenRevoked( mixed $tokenId ): bool {
+	public function isRefreshTokenRevoked( string $tokenId ): bool {
 		global $wpdb;
 
 		$revoked = $wpdb->get_var(

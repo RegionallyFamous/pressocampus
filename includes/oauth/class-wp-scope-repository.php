@@ -25,7 +25,7 @@ class ScopeEntity implements ScopeEntityInterface {
 
 class WPScopeRepository implements ScopeRepositoryInterface {
 
-	public function getScopeEntityByIdentifier( mixed $identifier ): ?ScopeEntityInterface {
+	public function getScopeEntityByIdentifier( string $identifier ): ?ScopeEntityInterface {
 		if ( $identifier !== PRESSOCAMPUS_SCOPE ) {
 			return null;
 		}
@@ -37,9 +37,10 @@ class WPScopeRepository implements ScopeRepositoryInterface {
 
 	public function finalizeScopes(
 		array $scopes,
-		mixed $grantType,
-		ClientEntityInterface $client,
-		mixed $userIdentifier = null
+		string $grantType,
+		ClientEntityInterface $clientEntity,
+		string|null $userIdentifier = null,
+		?string $authCodeId = null
 	): array {
 		return array_values(
 			array_filter( $scopes, fn( $s ) => $s->getIdentifier() === PRESSOCAMPUS_SCOPE )

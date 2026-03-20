@@ -30,7 +30,7 @@ class WPAccessTokenRepository implements AccessTokenRepositoryInterface {
 	public function getNewToken(
 		ClientEntityInterface $client,
 		array $scopes,
-		mixed $userId = null
+		string|null $userId = null
 	): AccessTokenEntityInterface {
 		$token = new AccessTokenEntity();
 		$token->setClient( $client );
@@ -67,7 +67,7 @@ class WPAccessTokenRepository implements AccessTokenRepositoryInterface {
 		);
 	}
 
-	public function revokeAccessToken( mixed $tokenId ): void {
+	public function revokeAccessToken( string $tokenId ): void {
 		global $wpdb;
 
 		$wpdb->update(
@@ -82,7 +82,7 @@ class WPAccessTokenRepository implements AccessTokenRepositoryInterface {
 		);
 	}
 
-	public function isAccessTokenRevoked( mixed $tokenId ): bool {
+	public function isAccessTokenRevoked( string $tokenId ): bool {
 		global $wpdb;
 
 		$revoked = $wpdb->get_var(
