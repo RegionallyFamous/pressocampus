@@ -11,7 +11,17 @@
  *   WP_CORE_DIR   – path to a WordPress install   (default /tmp/wordpress)
  */
 
-$_tests_dir = getenv( 'WP_TESTS_DIR' ) ?: '/tmp/wordpress-tests-lib';
+$_tests_dir  = getenv( 'WP_TESTS_DIR' ) ?: '/tmp/wordpress-tests-lib';
+$_plugin_dir = dirname( __DIR__ );
+
+// PHPUnit Polyfills — required by the WP test bootstrap (WP 5.9+).
+// Load from the Composer-managed location so no manual path is needed.
+$_polyfills_autoload = $_plugin_dir . '/vendor/yoast/phpunit-polyfills/phpunitpolyfills-autoload.php';
+if ( ! file_exists( $_polyfills_autoload ) ) {
+	echo "PHPUnit Polyfills not found. Run: composer install\n";
+	exit( 1 );
+}
+require_once $_polyfills_autoload;
 
 if ( ! file_exists( $_tests_dir . '/includes/functions.php' ) ) {
 	echo "Could not find WordPress test library in {$_tests_dir}\n";
