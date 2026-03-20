@@ -110,7 +110,10 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
 	add_action(
 		'cli_init',
 		static function (): void {
-			require_once PRESSOCAMPUS_PLUGIN_DIR . 'bin/wp-cli.php';
+			$wp_cli_file = PRESSOCAMPUS_PLUGIN_DIR . 'bin/wp-cli.php';
+			if ( file_exists( $wp_cli_file ) ) {
+				require_once $wp_cli_file;
+			}
 		}
 	);
 }
