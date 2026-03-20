@@ -4,13 +4,12 @@
     xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
     bootstrap="tests/bootstrap.php"
     colors="true"
-    verbose="true"
     stopOnFailure="false"
     cacheDirectory=".phpunit.cache"
 >
     <testsuites>
         <testsuite name="Pressocampus">
-            <directory>tests/</directory>
+            <directory suffix="Test.php">tests/</directory>
         </testsuite>
     </testsuites>
 

@@ -149,7 +149,7 @@ class MCPEndpoint {
 		);
 	}
 
-	private function method_initialize( array $params ): array {
+	private function method_initialize( array $params ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- MCP protocol; $params required by internal dispatch contract
 		$user_id     = Auth::get_current_user_id();
 		$client_name = Auth::get_current_client_name();
 		$host        = Auth::get_site_host();
@@ -190,7 +190,7 @@ class MCPEndpoint {
 		);
 	}
 
-	private function method_resources_list( array $params ): array {
+	private function method_resources_list( array $params ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- MCP protocol; $params required by internal dispatch contract
 		$user_id = Auth::get_current_user_id();
 		$host    = Auth::get_site_host();
 
@@ -347,7 +347,7 @@ class MCPEndpoint {
 		);
 	}
 
-	private function method_templates_list( array $params ): array {
+	private function method_templates_list( array $params ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- MCP protocol; $params required by internal dispatch contract
 		$host = Auth::get_site_host();
 		return array(
 			'resourceTemplates' => array(
@@ -886,7 +886,7 @@ class MCPEndpoint {
 		);
 	}
 
-	private function tool_error( string $code, string $message, int $status = 400 ): array {
+	private function tool_error( string $code, string $message, int $status = 400 ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- future-proofing; kept for signature consistency with rpc_error
 		return array(
 			'isError' => true,
 			'content' => array(
@@ -903,7 +903,7 @@ class MCPEndpoint {
 		);
 	}
 
-	private function rpc_error( int $code, string $message, int $http_status = 400 ): array {
+	private function rpc_error( int $code, string $message, int $http_status = 400 ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- future-proofing; kept for signature consistency with tool_error
 		return array(
 			'__rpc_error' => true,
 			'error'       => array(
@@ -956,7 +956,7 @@ class MCPEndpoint {
 		header( 'Content-Type: application/json; charset=utf-8' );
 	}
 
-	public function handle_cors_preflight( \WP_REST_Request $request ): \WP_REST_Response {
+	public function handle_cors_preflight( \WP_REST_Request $request ): \WP_REST_Response { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- WP REST callback; $request required by register_rest_route
 		$this->set_cors_headers();
 		return new \WP_REST_Response( null, 204 );
 	}

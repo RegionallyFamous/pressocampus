@@ -372,7 +372,7 @@ endif; // class_exists
  * @covers \Pressocampus\Soul
  * @covers \Pressocampus\ResourceIndex
  */
-class TestMCPDispatcher extends \WP_UnitTestCase {
+class MCPDispatcherTest extends \WP_UnitTestCase {
 
 	private Pressocampus_Test_Dispatcher $dispatcher;
 	private ResourceIndex                $index;

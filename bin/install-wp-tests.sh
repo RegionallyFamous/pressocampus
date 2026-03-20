@@ -129,7 +129,9 @@ if [[ ! -f "$WP_TESTS_DIR/wp-tests-config.php" ]]; then
     $SED "s|yourusernamehere|$DB_USER|"           "$WP_TESTS_DIR/wp-tests-config.php"
     $SED "s|yourpasswordhere|$DB_PASS|"           "$WP_TESTS_DIR/wp-tests-config.php"
     $SED "s|localhost|$DB_HOST|"                  "$WP_TESTS_DIR/wp-tests-config.php"
-    $SED "s|/path/to/wordpress/|$WP_CORE_DIR/|"  "$WP_TESTS_DIR/wp-tests-config.php"
+    # Modern WP test configs use dirname(__FILE__).'/src/' for ABSPATH; legacy configs use /path/to/wordpress/.
+    $SED "s|dirname( __FILE__ ) . '/src/'|'${WP_CORE_DIR}/'|"  "$WP_TESTS_DIR/wp-tests-config.php"
+    $SED "s|/path/to/wordpress/|${WP_CORE_DIR}/|"              "$WP_TESTS_DIR/wp-tests-config.php"
 fi
 
 # ─── Create test database ─────────────────────────────────────────────────────

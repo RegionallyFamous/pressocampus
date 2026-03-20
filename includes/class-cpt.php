@@ -204,7 +204,7 @@ class CPT {
 		);
 	}
 
-	public function on_save_post( int $post_id, \WP_Post $post, bool $update ): void {
+	public function on_save_post( int $post_id, \WP_Post $post, bool $update ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- WP save_post callback; $update is required by hook signature
 		// Skip auto-saves and revisions.
 		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
 			return;
@@ -246,7 +246,7 @@ class CPT {
 			array(
 				'post_type'      => PRESSOCAMPUS_CPT,
 				'post_status'    => 'publish',
-				'posts_per_page' => 200,
+				'posts_per_page' => 200, // phpcs:ignore WordPress.WP.PostsPerPage.posts_per_page_posts_per_page -- intentional: expire job scans all overdue memories in one pass
 				'no_found_rows'  => true,
 				'meta_query'     => array(
 					array(

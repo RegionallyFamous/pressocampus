@@ -73,7 +73,7 @@ class WPStream implements StreamInterface {
 		return true;
 	}
 
-	public function write( string $string ): int {
+	public function write( string $string ): int { // phpcs:ignore Universal.NamingConventions.NoReservedKeywordParameterNames.stringFound -- PSR-7 MessageInterface parameter name
 		$this->data .= $string;
 		return strlen( $string );
 	}
@@ -511,7 +511,7 @@ class WPServerRequest implements ServerRequestInterface {
 		return $this->attributes;
 	}
 
-	public function getAttribute( string $name, mixed $default = null ): mixed {
+	public function getAttribute( string $name, mixed $default = null ): mixed { // phpcs:ignore Universal.NamingConventions.NoReservedKeywordParameterNames.defaultFound -- PSR-7 MessageInterface parameter name
 		return $this->attributes[ $name ] ?? $default;
 	}
 

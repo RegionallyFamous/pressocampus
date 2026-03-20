@@ -137,7 +137,7 @@ class Pressocampus_CLI {
 	 *
 	 * @subcommand get
 	 */
-	public function get( array $args, array $assoc_args ): void {
+	public function get( array $args, array $assoc_args ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- WP-CLI callback signature requires $assoc_args
 		if ( empty( $args[0] ) ) {
 			WP_CLI::error( '<uri> is required.' );
 		}
@@ -541,7 +541,7 @@ class Pressocampus_CLI {
 	 *
 	 * @subcommand flush-cache
 	 */
-	public function flush_cache( array $args, array $assoc_args ): void {
+	public function flush_cache( array $args, array $assoc_args ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed,Generic.CodeAnalysis.UnusedFunctionParameter.Found -- WP-CLI callback signature requires ($args, $assoc_args)
 		global $wpdb;
 
 		// Remove all Pressocampus transients from the options table.
@@ -665,7 +665,7 @@ class Pressocampus_CLI {
 	 *
 	 * @subcommand stats
 	 */
-	public function stats( array $args, array $assoc_args ): void {
+	public function stats( array $args, array $assoc_args ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed,Generic.CodeAnalysis.UnusedFunctionParameter.Found -- WP-CLI callback signature requires ($args, $assoc_args)
 		global $wpdb;
 
 		$index_table = $wpdb->prefix . 'pressocampus_resource_index';
