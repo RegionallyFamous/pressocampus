@@ -70,6 +70,25 @@ class Plugin {
 		add_action( 'pressocampus_check_token_expiry', array( $this->oauth_server, 'notify_expiring_tokens' ) );
 		add_action( 'pressocampus_expire_memories', array( $this->cpt, 'expire_old_memories' ) );
 		add_action( 'pressocampus_send_soul_notice', array( $this->soul, 'send_update_notice' ) );
+
+		// Async index rebuild — triggered by mark_dirty() via wp_schedule_single_event.
+		add_action(
+			'pressocampus_rebuild_index',
+			function ( int $user_id ): void {
+				$host = Auth::get_site_host();
+				$this->resource_index->rebuild_if_dirty( $user_id, $host, $this->soul );
+			}
+		);
+
+		// Weekly audit log purge.
+		add_action(
+			'pressocampus_purge_audit_log',
+			function (): void {
+				$settings = get_option( 'pressocampus_settings', array() );
+				$days     = max( 1, (int) ( $settings['audit_log_retention_days'] ?? 90 ) );
+				$this->audit_log->purge_old( $days );
+			}
+		);
 	}
 
 	/**

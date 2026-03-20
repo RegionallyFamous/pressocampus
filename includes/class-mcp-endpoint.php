@@ -190,7 +190,7 @@ class MCPEndpoint {
 		);
 	}
 
-	private function method_resources_list( array $params ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- MCP protocol; $params required by internal dispatch contract
+	private function method_resources_list( array $params ): array {
 		$user_id = Auth::get_current_user_id();
 		$host    = Auth::get_site_host();
 
@@ -198,74 +198,129 @@ class MCPEndpoint {
 			return $this->rpc_error( -32008, 'Rate limit exceeded for reads (60/min)' );
 		}
 
-		$this->audit_log->record(
-			'resources_list',
-			$user_id,
-			Auth::get_current_client_name(),
-			'',
-			'',
-			''
-		);
+		// Cursor-based pagination: cursor is a base64-encoded 1-based page number.
+		$cursor   = isset( $params['cursor'] ) && $params['cursor'] !== '' ? (string) $params['cursor'] : null;
+		$page     = $cursor ? max( 1, (int) base64_decode( $cursor, true ) ) : 1;
+		$per_page = 100;
+		$offset   = ( $page - 1 ) * $per_page;
 
-		$query = new \WP_Query(
-			array(
-				'post_type'      => PRESSOCAMPUS_CPT,
-				'post_status'    => array( 'publish', 'pressocampus_expired' ),
-				'author'         => $user_id,
-				'posts_per_page' => -1,
-				'no_found_rows'  => true,
-			)
-		);
+		// Serve from object cache on page 1 (invalidated by mark_dirty()).
+		$cache_key = 'pc_resources_list_' . $user_id;
+		if ( $page === 1 ) {
+			$cached = wp_cache_get( $cache_key, 'pressocampus' );
+			if ( false !== $cached ) {
+				$this->audit_log->record( 'resources_list', $user_id, Auth::get_current_client_name(), '', '', '' );
+				return $cached;
+			}
+		}
+
+		$this->audit_log->record( 'resources_list', $user_id, Auth::get_current_client_name(), '', '', '' );
 
 		$soul_uri  = Soul::get_uri( $host );
 		$index_uri = Soul::get_index_uri( $host );
 
+		// Fetch soul and index posts first so they always appear at the top.
+		$pinned_query = new \WP_Query(
+			array(
+				'post_type'      => PRESSOCAMPUS_CPT,
+				'post_status'    => 'publish',
+				'author'         => $user_id,
+				'posts_per_page' => 2,
+				'no_found_rows'  => true,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'meta_query'     => array(
+					array(
+						'key'     => '_pressocampus_uri',
+						'value'   => array( $soul_uri, $index_uri ),
+						'compare' => 'IN',
+					),
+				),
+			)
+		);
+
 		$soul_resource  = null;
 		$index_resource = null;
-		$memories       = array();
 
-		foreach ( $query->posts as $post ) {
+		foreach ( $pinned_query->posts as $post ) {
 			$uri      = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
 			$priority = (string) ( get_post_meta( $post->ID, '_pressocampus_annotation_priority', true ) ?: 'normal' );
 			$resource = $this->post_to_resource_item( $post, $uri, $priority );
-
 			if ( $uri === $soul_uri ) {
 				$soul_resource = $resource;
-			} elseif ( $uri === $index_uri ) {
-				$index_resource = $resource;
 			} else {
-				$memories[] = array(
-					'resource'       => $resource,
-					'priority_float' => CPT::priority_to_float( $priority ),
-				);
+				$index_resource = $resource;
 			}
 		}
 
-		// Sort by priority descending, then by recency descending.
+		// Fetch paginated regular memories (excludes soul/index by URI).
+		$memory_query = new \WP_Query(
+			array(
+				'post_type'      => PRESSOCAMPUS_CPT,
+				'post_status'    => 'publish',
+				'author'         => $user_id,
+				'posts_per_page' => $per_page,
+				'offset'         => $offset,
+				'orderby'        => 'modified',
+				'order'          => 'DESC',
+				'no_found_rows'  => true,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'meta_query'     => array(
+					array(
+						'key'     => '_pressocampus_uri',
+						'value'   => array( $soul_uri, $index_uri ),
+						'compare' => 'NOT IN',
+					),
+				),
+			)
+		);
+
+		$memories = array();
+		foreach ( $memory_query->posts as $post ) {
+			$uri      = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
+			$priority = (string) ( get_post_meta( $post->ID, '_pressocampus_annotation_priority', true ) ?: 'normal' );
+			$memories[] = array(
+				'resource'       => $this->post_to_resource_item( $post, $uri, $priority ),
+				'priority_float' => CPT::priority_to_float( $priority ),
+			);
+		}
+
+		// Sort this page by priority descending, then by recency.
 		usort(
 			$memories,
 			static fn( array $a, array $b ): int =>
-			$b['priority_float'] <=> $a['priority_float']
-				?: strcmp(
-					$b['resource']['updated_at'] ?? '',
-					$a['resource']['updated_at'] ?? ''
-				)
+				$b['priority_float'] <=> $a['priority_float']
+					?: strcmp(
+						$b['resource']['updated_at'] ?? '',
+						$a['resource']['updated_at'] ?? ''
+					)
 		);
 
 		$resources = array();
-		if ( $soul_resource ) {
-			$resources[] = $soul_resource;
-		}
-		if ( $index_resource ) {
-			$resources[] = $index_resource;
+		if ( $page === 1 ) {
+			if ( $soul_resource ) {
+				$resources[] = $soul_resource;
+			}
+			if ( $index_resource ) {
+				$resources[] = $index_resource;
+			}
 		}
 		foreach ( $memories as $m ) {
 			$resources[] = $m['resource'];
 		}
 
-		$this->resource_index->rebuild_if_dirty( $user_id, $host, $this->soul );
+		$result = array( 'resources' => $resources );
 
-		return array( 'resources' => $resources );
+		// If we got a full page of memories there may be more; issue a nextCursor.
+		if ( count( $memories ) === $per_page ) {
+			$result['nextCursor'] = base64_encode( (string) ( $page + 1 ) );
+		}
+
+		// Cache page 1 in the object cache (invalidated by mark_dirty()).
+		if ( $page === 1 ) {
+			wp_cache_set( $cache_key, $result, 'pressocampus', 300 );
+		}
+
+		return $result;
 	}
 
 	private function post_to_resource_item( \WP_Post $post, string $uri, string $priority ): array {
@@ -293,10 +348,6 @@ class MCPEndpoint {
 
 		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
 			return $this->rpc_error( -32008, 'Rate limit exceeded for reads (60/min)' );
-		}
-
-		if ( $uri === Soul::get_index_uri( $host ) ) {
-			$this->resource_index->rebuild_if_dirty( $user_id, $host, $this->soul );
 		}
 
 		$index_entry = $this->resource_index->get_by_uri( $uri );
@@ -578,8 +629,8 @@ class MCPEndpoint {
 						)
 					);
 				}
-				if ( ! $possible_contradiction ) {
-					similar_text( $content, (string) ( $result['excerpt'] ?? '' ), $pct );
+			if ( ! $possible_contradiction ) {
+				similar_text( mb_substr( $content, 0, 200, 'UTF-8' ), (string) ( $result['excerpt'] ?? '' ), $pct );
 					if ( $pct > 50 ) {
 						$possible_contradiction = array(
 							'uri'        => $result['uri'],

@@ -67,6 +67,9 @@ class Installer {
 		if ( ! wp_next_scheduled( 'pressocampus_expire_memories' ) ) {
 			wp_schedule_event( time(), 'hourly', 'pressocampus_expire_memories' );
 		}
+		if ( ! wp_next_scheduled( 'pressocampus_purge_audit_log' ) ) {
+			wp_schedule_event( time(), 'weekly', 'pressocampus_purge_audit_log' );
+		}
 
 		set_transient( 'pressocampus_show_welcome', true, 30 );
 		flush_rewrite_rules();
@@ -91,7 +94,9 @@ class Installer {
 				PRIMARY KEY (id),
 				UNIQUE KEY uri (uri(191)),
 				KEY post_id (post_id),
-				KEY user_id (user_id)
+				KEY user_id (user_id),
+				KEY user_post (user_id, post_id),
+				FULLTEXT KEY excerpt_ft (excerpt)
 			) $charset;";
 
 			$sql2 = "CREATE TABLE {$wpdb->prefix}pressocampus_audit_log (
@@ -141,6 +146,34 @@ class Installer {
 			dbDelta( $sql2 );
 			dbDelta( $sql3 );
 			dbDelta( $sql4 );
+
+			// 1.0 → 1.1: FULLTEXT index on excerpt + composite (user_id, post_id) index.
+			$current_db_version = get_option( 'pressocampus_db_version', '0' );
+			if ( version_compare( (string) $current_db_version, '1.1', '<' ) ) {
+				$resource_table = $wpdb->prefix . 'pressocampus_resource_index';
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$has_ft = (int) $wpdb->get_var( $wpdb->prepare(
+					'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
+					$resource_table,
+					'excerpt_ft'
+				) );
+				if ( ! $has_ft ) {
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$wpdb->query( "ALTER TABLE `{$resource_table}` ADD FULLTEXT KEY excerpt_ft (excerpt)" );
+				}
+
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$has_composite = (int) $wpdb->get_var( $wpdb->prepare(
+					'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
+					$resource_table,
+					'user_post'
+				) );
+				if ( ! $has_composite ) {
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					$wpdb->query( "ALTER TABLE `{$resource_table}` ADD KEY user_post (user_id, post_id)" );
+				}
+			}
 
 			update_option( 'pressocampus_db_version', PRESSOCAMPUS_DB_VERSION );
 			delete_option( 'pressocampus_migration_error' );

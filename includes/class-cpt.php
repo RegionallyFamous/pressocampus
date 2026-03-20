@@ -242,30 +242,29 @@ class CPT {
 	}
 
 	public function expire_old_memories(): void {
-		$q = new \WP_Query(
-			array(
-				'post_type'      => PRESSOCAMPUS_CPT,
-				'post_status'    => 'publish',
-				'posts_per_page' => 200, // phpcs:ignore WordPress.WP.PostsPerPage.posts_per_page_posts_per_page -- intentional: expire job scans all overdue memories in one pass
-				'no_found_rows'  => true,
-				'meta_query'     => array(
-					array(
-						'key'     => '_pressocampus_expires_at',
-						'value'   => '',
-						'compare' => '!=',
+		// Filter in SQL — only loads posts whose expiry has already passed.
+		// Batches of 200 to avoid memory spikes; loops until the batch is empty
+		// so a single cron run clears all overdue memories across all users.
+		do {
+			$q = new \WP_Query(
+				array(
+					'post_type'      => PRESSOCAMPUS_CPT,
+					'post_status'    => 'publish',
+					'posts_per_page' => 200, // phpcs:ignore WordPress.WP.PostsPerPage.posts_per_page_posts_per_page -- intentional: expire job scans all overdue memories in batches
+					'no_found_rows'  => true,
+					// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					'meta_query'     => array(
+						array(
+							'key'     => '_pressocampus_expires_at',
+							'value'   => current_time( 'mysql' ),
+							'compare' => '<=',
+							'type'    => 'DATETIME',
+						),
 					),
-				),
-			)
-		);
+				)
+			);
 
-		foreach ( $q->posts as $post ) {
-			$expires_at = get_post_meta( $post->ID, '_pressocampus_expires_at', true );
-			if ( ! $expires_at ) {
-				continue;
-			}
-
-			$ts = strtotime( (string) $expires_at );
-			if ( $ts !== false && $ts < time() ) {
+			foreach ( $q->posts as $post ) {
 				wp_update_post(
 					array(
 						'ID'          => $post->ID,
@@ -273,7 +272,7 @@ class CPT {
 					)
 				);
 			}
-		}
+		} while ( $q->post_count === 200 );
 	}
 
 	/**

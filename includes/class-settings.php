@@ -340,6 +340,12 @@ CSS;
 							<label for="pc-memory-limit"><?php esc_html_e( 'Max memories per user', 'pressocampus' ); ?></label>
 							<input id="pc-memory-limit" name="memory_count_limit" type="number" min="1" max="100000" class="pc-input" style="max-width:120px" value="<?php echo esc_attr( $settings['memory_count_limit'] ?? 1000 ); ?>" />
 						</div>
+
+						<div class="pc-row">
+							<label for="pc-audit-retention"><?php esc_html_e( 'Audit log retention (days)', 'pressocampus' ); ?></label>
+							<input id="pc-audit-retention" name="audit_log_retention_days" type="number" min="1" max="3650" class="pc-input" style="max-width:120px" value="<?php echo esc_attr( $settings['audit_log_retention_days'] ?? 90 ); ?>" />
+							<span style="font-size:12px;color:#888"><?php esc_html_e( 'History entries older than this are deleted weekly.', 'pressocampus' ); ?></span>
+						</div>
 					</div>
 
 					<div style="margin-bottom:20px">
@@ -984,19 +990,21 @@ CSS;
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'pressocampus' ) ) );
 		}
 
-		$cors_raw     = sanitize_textarea_field( wp_unslash( $_POST['cors_origins'] ?? '' ) );
-		$cors_origins = implode( "\n", array_filter( array_map( 'trim', explode( "\n", $cors_raw ) ) ) );
-		$rate_reads   = max( 1, min( 1000, (int) ( $_POST['rate_limit_reads'] ?? 60 ) ) );
-		$rate_writes  = max( 1, min( 1000, (int) ( $_POST['rate_limit_writes'] ?? 30 ) ) );
-		$max_kb       = max( 1, min( 10240, (int) ( $_POST['max_content_size'] ?? 512 ) ) );
-		$memory_limit = max( 1, min( 100000, (int) ( $_POST['memory_count_limit'] ?? 1000 ) ) );
+		$cors_raw          = sanitize_textarea_field( wp_unslash( $_POST['cors_origins'] ?? '' ) );
+		$cors_origins      = implode( "\n", array_filter( array_map( 'trim', explode( "\n", $cors_raw ) ) ) );
+		$rate_reads        = max( 1, min( 1000, (int) ( $_POST['rate_limit_reads'] ?? 60 ) ) );
+		$rate_writes       = max( 1, min( 1000, (int) ( $_POST['rate_limit_writes'] ?? 30 ) ) );
+		$max_kb            = max( 1, min( 10240, (int) ( $_POST['max_content_size'] ?? 512 ) ) );
+		$memory_limit      = max( 1, min( 100000, (int) ( $_POST['memory_count_limit'] ?? 1000 ) ) );
+		$audit_log_days    = max( 1, min( 3650, (int) ( $_POST['audit_log_retention_days'] ?? 90 ) ) );
 
 		$settings = array(
-			'cors_origins'       => $cors_origins,
-			'rate_limit_reads'   => $rate_reads,
-			'rate_limit_writes'  => $rate_writes,
-			'max_content_size'   => $max_kb * 1024,  // stored in bytes
-			'memory_count_limit' => $memory_limit,
+			'cors_origins'             => $cors_origins,
+			'rate_limit_reads'         => $rate_reads,
+			'rate_limit_writes'        => $rate_writes,
+			'max_content_size'         => $max_kb * 1024,  // stored in bytes
+			'memory_count_limit'       => $memory_limit,
+			'audit_log_retention_days' => $audit_log_days,
 		);
 
 		update_option( 'pressocampus_settings', $settings, false );
@@ -1032,11 +1040,12 @@ CSS;
 	 */
 	private function get_settings(): array {
 		$defaults = array(
-			'cors_origins'       => '',
-			'rate_limit_reads'   => 60,
-			'rate_limit_writes'  => 30,
-			'max_content_size'   => 524288,  // 512 KB in bytes
-			'memory_count_limit' => 1000,
+			'cors_origins'             => '',
+			'rate_limit_reads'         => 60,
+			'rate_limit_writes'        => 30,
+			'max_content_size'         => 524288,  // 512 KB in bytes
+			'memory_count_limit'       => 1000,
+			'audit_log_retention_days' => 90,
 		);
 
 		$saved = get_option( 'pressocampus_settings', array() );
