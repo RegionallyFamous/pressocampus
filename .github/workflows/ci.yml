@@ -28,7 +28,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          tools: composer:v2
+          tools: composer:v2, cs2pr
           coverage: none
 
       - name: Get Composer cache directory
@@ -47,7 +47,6 @@ jobs:
 
       - name: Run PHPCS
         run: vendor/bin/phpcs --report=checkstyle | cs2pr
-        continue-on-error: false
 
   # ─── Static analysis ─────────────────────────────────────────────────────────
 
@@ -174,6 +173,40 @@ jobs:
         with:
           files: build/coverage.xml
           fail_ci_if_error: false
+
+  # ─── WordPress.org Plugin Check ──────────────────────────────────────────────
+
+  plugin-check:
+    name: Plugin Check (WordPress.org)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - name: Install Composer dependencies (production only)
+        run: composer install --prefer-dist --no-progress --no-dev --optimize-autoloader
+
+      - name: Build clean distribution directory
+        run: |
+          mkdir -p /tmp/plugin-dist/pressocampus
+          rsync -r --exclude-from=.buildignore . /tmp/plugin-dist/pressocampus/
+
+      - name: WordPress Plugin Check
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: '/tmp/plugin-dist/pressocampus'
+          # plugin_readme      — readme.txt is for WP.org listing, not runtime.
+          # plugin_review_phpcs — covered by the dedicated lint job.
+          exclude-checks: 'plugin_readme,plugin_review_phpcs'
 
   # ─── Build ───────────────────────────────────────────────────────────────────
 
