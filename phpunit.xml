@@ -5,7 +5,7 @@
     bootstrap="tests/bootstrap.php"
     colors="true"
     stopOnFailure="false"
-    cacheDirectory=".phpunit.cache"
+    cacheResultFile=".phpunit.cache/result.cache"
 >
     <testsuites>
         <testsuite name="Pressocampus">
@@ -13,16 +13,16 @@
         </testsuite>
     </testsuites>
 
-    <source>
+    <coverage>
         <include>
-            <directory>includes/</directory>
+            <directory suffix=".php">includes/</directory>
         </include>
         <exclude>
             <directory>vendor/</directory>
             <directory>tests/</directory>
             <directory>build/</directory>
         </exclude>
-    </source>
+    </coverage>
 
     <php>
         <env name="WP_TESTS_DIR" value="/tmp/wordpress-tests-lib"/>
