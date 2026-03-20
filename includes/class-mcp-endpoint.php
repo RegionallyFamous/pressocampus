@@ -200,7 +200,7 @@ class MCPEndpoint {
 
 		// Cursor-based pagination: cursor is a base64-encoded 1-based page number.
 		$cursor   = isset( $params['cursor'] ) && $params['cursor'] !== '' ? (string) $params['cursor'] : null;
-		$page     = $cursor ? max( 1, (int) base64_decode( $cursor, true ) ) : 1;
+		$page     = $cursor ? max( 1, (int) base64_decode( $cursor, true ) ) : 1; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
 		$per_page = 100;
 		$offset   = ( $page - 1 ) * $per_page;
 
@@ -276,8 +276,8 @@ class MCPEndpoint {
 
 		$memories = array();
 		foreach ( $memory_query->posts as $post ) {
-			$uri      = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
-			$priority = (string) ( get_post_meta( $post->ID, '_pressocampus_annotation_priority', true ) ?: 'normal' );
+			$uri        = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
+			$priority   = (string) ( get_post_meta( $post->ID, '_pressocampus_annotation_priority', true ) ?: 'normal' );
 			$memories[] = array(
 				'resource'       => $this->post_to_resource_item( $post, $uri, $priority ),
 				'priority_float' => CPT::priority_to_float( $priority ),
@@ -312,7 +312,7 @@ class MCPEndpoint {
 
 		// If we got a full page of memories there may be more; issue a nextCursor.
 		if ( count( $memories ) === $per_page ) {
-			$result['nextCursor'] = base64_encode( (string) ( $page + 1 ) );
+			$result['nextCursor'] = base64_encode( (string) ( $page + 1 ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 		}
 
 		// Cache page 1 in the object cache (invalidated by mark_dirty()).
@@ -629,8 +629,8 @@ class MCPEndpoint {
 						)
 					);
 				}
-			if ( ! $possible_contradiction ) {
-				similar_text( mb_substr( $content, 0, 200, 'UTF-8' ), (string) ( $result['excerpt'] ?? '' ), $pct );
+				if ( ! $possible_contradiction ) {
+					similar_text( mb_substr( $content, 0, 200, 'UTF-8' ), (string) ( $result['excerpt'] ?? '' ), $pct );
 					if ( $pct > 50 ) {
 						$possible_contradiction = array(
 							'uri'        => $result['uri'],

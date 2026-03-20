@@ -230,11 +230,11 @@ CSS;
 
 					<div class="pc-row" style="margin-top:10px">
 						<?php
-					$starter = sprintf(
+						$starter = sprintf(
 						/* translators: %s: site name */
-						__( "I've just connected my memory store at %s to this conversation. Please introduce yourself, explain what you can now do with my memory store, then read my soul and tell me what you learned about me before we begin.", 'pressocampus' ),
-						$site_name
-					);
+							__( "I've just connected my memory store at %s to this conversation. Please introduce yourself, explain what you can now do with my memory store, then read my soul and tell me what you learned about me before we begin.", 'pressocampus' ),
+							$site_name
+						);
 						?>
 						<button class="pc-btn secondary" onclick="pcCopy(<?php echo wp_json_encode( $starter ); ?>, this)"><?php esc_html_e( 'Copy Starter Prompt', 'pressocampus' ); ?></button>
 					</div>
@@ -990,13 +990,13 @@ CSS;
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'pressocampus' ) ) );
 		}
 
-		$cors_raw          = sanitize_textarea_field( wp_unslash( $_POST['cors_origins'] ?? '' ) );
-		$cors_origins      = implode( "\n", array_filter( array_map( 'trim', explode( "\n", $cors_raw ) ) ) );
-		$rate_reads        = max( 1, min( 1000, (int) ( $_POST['rate_limit_reads'] ?? 60 ) ) );
-		$rate_writes       = max( 1, min( 1000, (int) ( $_POST['rate_limit_writes'] ?? 30 ) ) );
-		$max_kb            = max( 1, min( 10240, (int) ( $_POST['max_content_size'] ?? 512 ) ) );
-		$memory_limit      = max( 1, min( 100000, (int) ( $_POST['memory_count_limit'] ?? 1000 ) ) );
-		$audit_log_days    = max( 1, min( 3650, (int) ( $_POST['audit_log_retention_days'] ?? 90 ) ) );
+		$cors_raw       = sanitize_textarea_field( wp_unslash( $_POST['cors_origins'] ?? '' ) );
+		$cors_origins   = implode( "\n", array_filter( array_map( 'trim', explode( "\n", $cors_raw ) ) ) );
+		$rate_reads     = max( 1, min( 1000, (int) ( $_POST['rate_limit_reads'] ?? 60 ) ) );
+		$rate_writes    = max( 1, min( 1000, (int) ( $_POST['rate_limit_writes'] ?? 30 ) ) );
+		$max_kb         = max( 1, min( 10240, (int) ( $_POST['max_content_size'] ?? 512 ) ) );
+		$memory_limit   = max( 1, min( 100000, (int) ( $_POST['memory_count_limit'] ?? 1000 ) ) );
+		$audit_log_days = max( 1, min( 3650, (int) ( $_POST['audit_log_retention_days'] ?? 90 ) ) );
 
 		$settings = array(
 			'cors_origins'             => $cors_origins,

@@ -153,22 +153,26 @@ class Installer {
 				$resource_table = $wpdb->prefix . 'pressocampus_resource_index';
 
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$has_ft = (int) $wpdb->get_var( $wpdb->prepare(
-					'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
-					$resource_table,
-					'excerpt_ft'
-				) );
+				$has_ft = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
+						$resource_table,
+						'excerpt_ft'
+					)
+				);
 				if ( ! $has_ft ) {
 					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					$wpdb->query( "ALTER TABLE `{$resource_table}` ADD FULLTEXT KEY excerpt_ft (excerpt)" );
 				}
 
 				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$has_composite = (int) $wpdb->get_var( $wpdb->prepare(
-					'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
-					$resource_table,
-					'user_post'
-				) );
+				$has_composite = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
+						$resource_table,
+						'user_post'
+					)
+				);
 				if ( ! $has_composite ) {
 					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 					$wpdb->query( "ALTER TABLE `{$resource_table}` ADD KEY user_post (user_id, post_id)" );
