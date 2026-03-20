@@ -7,11 +7,14 @@
 # Examples:
 #   bash bin/install-wp-tests.sh pressocampus_test root ''
 #   bash bin/install-wp-tests.sh pressocampus_test root '' 127.0.0.1 latest
-#   bash bin/install-wp-tests.sh pressocampus_test root '' localhost 7.0
+#   bash bin/install-wp-tests.sh pressocampus_test root '' localhost 6.7
 #
 # Environment variables (override positional args):
-#   WP_TESTS_DIR   Where to install the test library (default: /tmp/wordpress-tests-lib)
-#   WP_CORE_DIR    Where to install WordPress core (default: /tmp/wordpress)
+#   WP_TESTS_DIR     Where to install the test library (default: /tmp/wordpress-tests-lib)
+#   WP_CORE_DIR      Where to install WordPress core (default: /tmp/wordpress)
+#   WP_TESTS_BRANCH  SVN branch for the test library, independent of WP core version.
+#                    Use "trunk" to get the latest test library (required for PHPUnit 10+).
+#                    Defaults to the same value as <wp-version>.
 
 set -euo pipefail
 
@@ -23,6 +26,9 @@ WP_VERSION="${5:-latest}"
 
 WP_TESTS_DIR="${WP_TESTS_DIR:-/tmp/wordpress-tests-lib}"
 WP_CORE_DIR="${WP_CORE_DIR:-/tmp/wordpress}"
+# WP_TESTS_BRANCH allows the test library SVN path to be overridden independently
+# of the WP core version being tested.  Set to "trunk" in CI when using PHPUnit 10+.
+WP_TESTS_BRANCH="${WP_TESTS_BRANCH:-}"
 
 TMPDIR="${TMPDIR:-/tmp}"
 
@@ -62,7 +68,19 @@ if [[ "$WP_VERSION" == "latest" ]]; then
     echo "Resolved latest WordPress version: $WP_VERSION"
 fi
 
-WP_TESTS_TAG="tags/$WP_VERSION"
+# ─── Resolve test library SVN tag ─────────────────────────────────────────────
+# WP_TESTS_BRANCH can override the SVN branch independently of WP core.
+# "trunk" gets the bleeding-edge test library (supports PHPUnit 10+).
+# The WP test library from stable tags (≤ 6.7) only supports PHPUnit ≤ 9.
+
+_TESTS_BRANCH="${WP_TESTS_BRANCH:-$WP_VERSION}"
+
+if [[ "$_TESTS_BRANCH" == "trunk" ]]; then
+    WP_TESTS_TAG="trunk"
+    echo "Using WP test library from trunk (PHPUnit 10+ compatible)"
+else
+    WP_TESTS_TAG="tags/$_TESTS_BRANCH"
+fi
 
 # ─── Download WordPress core ──────────────────────────────────────────────────
 

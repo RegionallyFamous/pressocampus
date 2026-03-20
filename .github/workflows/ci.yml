@@ -113,8 +113,12 @@ jobs:
           --health-retries=5
 
     env:
-      WP_TESTS_DIR: /tmp/wordpress-tests-lib
-      WP_CORE_DIR:  /tmp/wordpress
+      WP_TESTS_DIR:    /tmp/wordpress-tests-lib
+      WP_CORE_DIR:     /tmp/wordpress
+      # WP stable tags (≤ 6.7) use PHPUnit\Util\Test::parseTestMethodAnnotations()
+      # which was removed in PHPUnit 10.  Always pull the test library from trunk
+      # where that call has been replaced with PHPUnit 10+ compatible code.
+      WP_TESTS_BRANCH: trunk
 
     steps:
       - name: Checkout
