@@ -36,6 +36,11 @@ parameters:
     # PHP version for analysis
     phpVersion: 80300
 
+    # Disable parallel workers — each spawns its own process with its own memory
+    # budget. On constrained CI runners a single-process run is more reliable.
+    parallel:
+        maximumNumberOfProcesses: 1
+
     # Report unmatched ignoreErrors as errors (keeps the ignore list clean)
     reportUnmatchedIgnoredErrors: false
 
