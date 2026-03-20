@@ -42,7 +42,9 @@ download() {
     local dest="$2"
 
     if command_exists curl; then
-        curl --silent --location "$url" --output "$dest"
+        # --fail: exit non-zero on HTTP 4xx/5xx so a 404 page is never
+        # silently saved as the archive (which would cause a confusing tar error).
+        curl --silent --location --fail "$url" --output "$dest"
     elif command_exists wget; then
         wget --quiet "$url" --output-document="$dest"
     else

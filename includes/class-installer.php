@@ -23,7 +23,7 @@ class Installer {
 		}
 
 		// 2. Create custom role
-		add_role( 'pressocampus_agent', 'Pressocampus Agent', array() );
+		add_role( 'pressocampus_agent', 'Pressocampus Agent', [] );
 
 		// 3. Create pressocampus_service user (only if not exists)
 		if ( ! username_exists( 'pressocampus_service' ) ) {
@@ -41,24 +41,40 @@ class Installer {
 
 		// 4. Generate RSA key pair (only if not already present)
 		if ( ! get_option( 'pressocampus_rsa_private_key' ) ) {
-			$config = array(
+			$config = [
 				'digest_alg'       => 'sha256',
 				'private_key_bits' => 2048,
 				'private_key_type' => OPENSSL_KEYTYPE_RSA,
-			);
-			$res    = openssl_pkey_new( $config );
-			if ( $res ) {
-				openssl_pkey_export( $res, $private_key );
+			];
+			$res         = openssl_pkey_new( $config );
+			$private_key = '';
+			if ( $res && openssl_pkey_export( $res, $private_key ) && $private_key !== '' ) {
 				$public_key_details = openssl_pkey_get_details( $res );
-				update_option( 'pressocampus_rsa_private_key', $private_key );
-				update_option( 'pressocampus_rsa_public_key', $public_key_details['key'] );
+				if ( is_array( $public_key_details ) && isset( $public_key_details['key'] ) ) {
+					update_option( 'pressocampus_rsa_private_key', $private_key );
+					update_option( 'pressocampus_rsa_public_key', $public_key_details['key'] );
+				}
+			} else {
+				// Persist the error so the admin notice in Onboarding can surface it.
+				update_option(
+					'pressocampus_migration_error',
+					'Failed to generate or export RSA key pair. OAuth will not work until this is resolved. Check that the openssl extension is available.'
+				);
 			}
 		}
 
 		// 5. Create DB tables
 		self::run_migrations();
 
-		// 6. Set welcome transient + flush rewrite rules
+		// 6. Schedule cron events (activation runs once, so no race condition).
+		if ( ! wp_next_scheduled( 'pressocampus_check_token_expiry' ) ) {
+			wp_schedule_event( time(), 'daily', 'pressocampus_check_token_expiry' );
+		}
+		if ( ! wp_next_scheduled( 'pressocampus_expire_memories' ) ) {
+			wp_schedule_event( time(), 'hourly', 'pressocampus_expire_memories' );
+		}
+
+		// 7. Set welcome transient + flush rewrite rules
 		set_transient( 'pressocampus_show_welcome', true, 30 );
 		flush_rewrite_rules();
 	}

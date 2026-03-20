@@ -20,12 +20,12 @@ class Settings {
         private AuditLog $audit_log,
         private Soul     $soul
     ) {
-        add_action('admin_menu',    [$this, 'register_menu']);
-        add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
+        add_action('admin_menu', [$this, 'register_menu']);
 
         add_action('wp_ajax_pressocampus_test_connection', [$this, 'ajax_test_connection']);
         add_action('wp_ajax_pressocampus_revoke_client',   [$this, 'ajax_revoke_client']);
         add_action('wp_ajax_pressocampus_export_brain',    [$this, 'ajax_export_brain']);
+        add_action('wp_ajax_pressocampus_export_csv',      [$this, 'ajax_export_csv']);
         add_action('wp_ajax_pressocampus_save_settings',   [$this, 'ajax_save_settings']);
         add_action('wp_ajax_pressocampus_dismiss_notice',  [$this, 'ajax_dismiss_notice']);
     }
@@ -70,18 +70,6 @@ class Settings {
             'pressocampus-history',
             [$this, 'render_history_page']
         );
-    }
-
-    // -----------------------------------------------------------------------
-    // Inline styles / scripts (no external deps)
-    // -----------------------------------------------------------------------
-
-    public function enqueue_scripts(string $hook): void {
-        if (!in_array($hook, ['toplevel_page_pressocampus', 'pressocampus_page_pressocampus-history'], true)) {
-            return;
-        }
-
-        // All CSS/JS is inlined via render_* methods to avoid asset pipeline.
     }
 
     // -----------------------------------------------------------------------
@@ -162,7 +150,7 @@ CSS;
 
         $show_welcome = isset($_GET['welcome']) && $_GET['welcome'] === '1'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         $active_tab   = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'connect'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-        $user_id      = $this->auth->get_current_user_id();
+        $user_id      = get_current_user_id();
         $mcp_url      = home_url('/brain');
         $site_name    = get_bloginfo('name');
         $settings     = $this->get_settings();
@@ -177,7 +165,7 @@ CSS;
         if ($soul_post instanceof \WP_Post) {
             $soul_word_count = str_word_count(wp_strip_all_tags($soul_post->post_content));
             $soul_updated    = human_time_diff(strtotime($soul_post->post_modified_gmt), time()) . ' ' . __('ago', 'pressocampus');
-            $soul_revisions  = (int) wp_count_posts_revisions($soul_post->ID);
+            $soul_revisions  = count(wp_get_post_revisions($soul_post->ID, ['fields' => 'ids']));
         }
 
         // Connected apps
@@ -306,7 +294,7 @@ CSS;
                                     </td>
                                     <td>
                                         <button class="pc-btn danger"
-                                            onclick="pcRevokeClient(<?php echo (int) $client['id']; ?>, <?php echo wp_json_encode($client['name']); ?>, this)"
+                                            onclick="pcRevokeClient(<?php echo esc_attr($client['id']); ?>, <?php echo wp_json_encode($client['name']); ?>, this)"
                                         ><?php esc_html_e('Revoke', 'pressocampus'); ?></button>
                                     </td>
                                 </tr>
@@ -412,7 +400,7 @@ CSS;
             wp_die(esc_html__('You do not have permission to access this page.', 'pressocampus'));
         }
 
-        $user_id      = $this->auth->get_current_user_id();
+        $user_id      = get_current_user_id();
         $per_page     = 50;
         // phpcs:disable WordPress.Security.NonceVerification.Recommended
         $page         = max(1, (int) ($_GET['paged']   ?? 1));
@@ -551,8 +539,6 @@ CSS;
             <?php endif; ?>
         </div>
         <?php
-        // Register the CSV export action on history page load
-        add_action('wp_ajax_pressocampus_export_csv', [$this, 'ajax_export_csv']);
     }
 
     // -----------------------------------------------------------------------
@@ -811,9 +797,10 @@ CSS;
             wp_send_json_error(['message' => __('Permission denied.', 'pressocampus')]);
         }
 
-        $client_id = (int) ($_POST['client_id'] ?? 0);
+        // client_id is a varchar primary key (e.g. "prc_6654abc…"), not an integer.
+        $client_id = sanitize_text_field(wp_unslash($_POST['client_id'] ?? ''));
 
-        if ($client_id <= 0) {
+        if ($client_id === '') {
             wp_send_json_error(['message' => __('Invalid client ID.', 'pressocampus')]);
         }
 
@@ -822,16 +809,10 @@ CSS;
         $clients_table = $wpdb->prefix . 'pressocampus_oauth_clients';
         $tokens_table  = $wpdb->prefix . 'pressocampus_oauth_tokens';
 
-        // Fetch the client_id string before deletion (needed to revoke tokens)
-        $client_key = $wpdb->get_var($wpdb->prepare("SELECT client_id FROM {$clients_table} WHERE id = %d", $client_id)); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        // Delete all tokens for this client first, then the client record.
+        $wpdb->delete($tokens_table, ['client_id' => $client_id], ['%s']);
 
-        // Delete all tokens for this client
-        if ($client_key) {
-            $wpdb->delete($tokens_table, ['client_id' => $client_key], ['%s']); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        }
-
-        // Delete client record
-        $deleted = $wpdb->delete($clients_table, ['id' => $client_id], ['%d']);
+        $deleted = $wpdb->delete($clients_table, ['id' => $client_id], ['%s']);
 
         if ($deleted === false) {
             wp_send_json_error(['message' => __('Database error while revoking client.', 'pressocampus')]);
@@ -853,7 +834,7 @@ CSS;
             wp_die(esc_html__('Permission denied.', 'pressocampus'));
         }
 
-        $user_id = $this->auth->get_current_user_id();
+        $user_id = get_current_user_id();
 
         // Fetch soul
         $soul_post = $this->soul->get_post($user_id);
@@ -952,7 +933,7 @@ CSS;
             wp_die(esc_html__('Permission denied.', 'pressocampus'));
         }
 
-        $user_id = $this->auth->get_current_user_id();
+        $user_id = get_current_user_id();
         $csv     = $this->audit_log->export_csv($user_id, 30);
         $date    = gmdate('Y-m-d');
 

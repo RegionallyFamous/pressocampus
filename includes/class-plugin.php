@@ -66,16 +66,10 @@ class Plugin {
         add_action('init', [$this, 'register_post_status']);
         add_action('init', [$this, 'register_brain_rewrite']);
 
-        // Cron hooks
+        // Cron job handlers — events are scheduled once in Installer::activate().
         add_action('pressocampus_check_token_expiry', [$this->oauth_server, 'notify_expiring_tokens']);
         add_action('pressocampus_expire_memories',    [$this->cpt,          'expire_old_memories']);
-
-        if (!wp_next_scheduled('pressocampus_check_token_expiry')) {
-            wp_schedule_event(time(), 'daily',  'pressocampus_check_token_expiry');
-        }
-        if (!wp_next_scheduled('pressocampus_expire_memories')) {
-            wp_schedule_event(time(), 'hourly', 'pressocampus_expire_memories');
-        }
+        add_action('pressocampus_send_soul_notice',   [$this->soul,         'send_update_notice']);
     }
 
     /**
