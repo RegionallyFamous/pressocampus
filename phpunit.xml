@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+    bootstrap="tests/bootstrap.php"
+    colors="true"
+    verbose="true"
+    stopOnFailure="false"
+    cacheDirectory=".phpunit.cache"
+>
+    <testsuites>
+        <testsuite name="Pressocampus">
+            <directory>tests/</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>includes/</directory>
+        </include>
+        <exclude>
+            <directory>vendor/</directory>
+            <directory>tests/</directory>
+            <directory>build/</directory>
+        </exclude>
+    </source>
+
+    <php>
+        <env name="WP_TESTS_DIR" value="/tmp/wordpress-tests-lib"/>
+        <env name="WP_CORE_DIR"  value="/tmp/wordpress"/>
+    </php>
+
+    <logging>
+        <junit outputFile="build/phpunit-results.xml"/>
+    </logging>
+</phpunit>

@@ -1,0 +1,43 @@
+includes:
+    - vendor/szepeviktor/phpstan-wordpress/extension.neon
+    - phpstan-baseline.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - pressocampus.php
+        - includes/
+        - bin/wp-cli.php
+
+    excludePaths:
+        - vendor/
+        - tests/
+        - build/ (?)
+
+    bootstrapFiles:
+        - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+
+    # Suppress errors from WordPress globals that PHPStan doesn't know about
+    ignoreErrors:
+        # WP_CLI is a runtime global — not a class PHPStan can resolve
+        - '#Instantiated class WP_CLI not found#'
+        # league/oauth2-server uses dynamic interfaces
+        - '#Call to an undefined method League\\OAuth2\\Server#'
+        # WordPress ABSPATH constant not resolved during analysis
+        - '#Constant ABSPATH not found#'
+        # Dynamic SQL construction with $wpdb->prepare is safe
+        - '#Variable variables are not allowed#'
+
+    # Treat missing WP classes as stubs (they're in wordpress-stubs)
+    stubFiles:
+        - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
+
+    # PHP version for analysis
+    phpVersion: 80300
+
+    # Report unmatched ignoreErrors as errors (keeps the ignore list clean)
+    reportUnmatchedIgnoredErrors: false
+
+    # Treat all files as if strict_types=1 is declared
+    treatPhpDocTypesAsCertain: false

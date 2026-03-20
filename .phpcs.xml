@@ -1,0 +1,134 @@
+<?xml version="1.0"?>
+<ruleset name="Pressocampus">
+    <description>WordPress coding standards for the Pressocampus plugin.</description>
+
+    <!-- What to scan -->
+    <file>pressocampus.php</file>
+    <file>uninstall.php</file>
+    <file>includes/</file>
+    <file>bin/wp-cli.php</file>
+
+    <!-- What to exclude -->
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/tests/*</exclude-pattern>
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>*/build/*</exclude-pattern>
+
+    <!-- Output settings -->
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg value="sp"/>
+    <arg name="parallel" value="8"/>
+    <arg name="extensions" value="php"/>
+
+    <!-- ─── Core WordPress standards ─────────────────────────────────── -->
+
+    <rule ref="WordPress-Core"/>
+    <rule ref="WordPress-Docs"/>
+    <rule ref="WordPress-Extra"/>
+
+    <!-- ─── Docblock rules — relaxed for generated/AI code ───────────── -->
+
+    <!-- Class and method docblocks are encouraged but not required for every method -->
+    <rule ref="Squiz.Commenting.FunctionComment">
+        <exclude name="Squiz.Commenting.FunctionComment.Missing"/>
+        <exclude name="Squiz.Commenting.FunctionComment.MissingParamTag"/>
+        <exclude name="Squiz.Commenting.FunctionComment.ParamCommentFullStop"/>
+        <exclude name="Squiz.Commenting.FunctionComment.MissingReturn"/>
+        <exclude name="Squiz.Commenting.FunctionComment.WrongStyle"/>
+    </rule>
+    <rule ref="Squiz.Commenting.ClassComment">
+        <exclude name="Squiz.Commenting.ClassComment.Missing"/>
+    </rule>
+    <rule ref="Squiz.Commenting.VariableComment">
+        <exclude name="Squiz.Commenting.VariableComment.Missing"/>
+    </rule>
+    <rule ref="Squiz.Commenting.InlineComment">
+        <exclude name="Squiz.Commenting.InlineComment.InvalidEndChar"/>
+    </rule>
+
+    <!-- ─── Yoda conditions — disabled: PHP 8.3 strict types make
+         accidental assignment a non-issue; consistent non-Yoda style throughout -->
+    <rule ref="WordPress.PHP.YodaConditions">
+        <severity>0</severity>
+    </rule>
+
+    <!-- ─── Short ternary — valid and idiomatic in PHP 8.3 ───────────── -->
+    <rule ref="Universal.Operators.DisallowShortTernary">
+        <severity>0</severity>
+    </rule>
+
+    <!-- ─── Variable naming — allow non-snake_case from 3rd-party interfaces -->
+    <rule ref="WordPress.NamingConventions.ValidVariableName">
+        <exclude name="WordPress.NamingConventions.ValidVariableName.VariableNotSnakeCase"/>
+    </rule>
+
+    <!-- ─── File naming: we use class-*.php convention ───────────────── -->
+    <rule ref="WordPress.Files.FileName">
+        <properties>
+            <property name="strict_class_file_names" value="false"/>
+        </properties>
+    </rule>
+
+    <!-- ─── Minimum WordPress version ────────────────────────────────── -->
+    <config name="minimum_supported_wp_version" value="7.0"/>
+
+    <!-- ─── PHP version compatibility ────────────────────────────────── -->
+    <config name="testVersion" value="8.3-"/>
+
+    <!-- ─── Text domain enforcement ──────────────────────────────────── -->
+    <rule ref="WordPress.WP.I18n">
+        <properties>
+            <property name="text_domain" type="array">
+                <element value="pressocampus"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- ─── Global prefix enforcement ────────────────────────────────── -->
+    <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+        <properties>
+            <property name="prefixes" type="array">
+                <element value="pressocampus"/>
+                <element value="Pressocampus"/>
+                <element value="PRESSOCAMPUS"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- ─── Nonce verification — MCP + OAuth endpoints use OAuth Bearer tokens,
+         not nonces; PSR7 bridge has no form processing whatsoever -->
+    <rule ref="WordPress.Security.NonceVerification">
+        <exclude-pattern>*/class-mcp-endpoint.php</exclude-pattern>
+        <exclude-pattern>*/class-oauth-server.php</exclude-pattern>
+        <exclude-pattern>*/class-psr7-bridge.php</exclude-pattern>
+    </rule>
+
+    <!-- ─── Multiple classes per file — PSR7 bridge groups related adapter
+         classes by design; WP-CLI groups command classes by convention;
+         league/oauth2-server repositories bundle entity + interface -->
+    <rule ref="Generic.Files.OneObjectStructurePerFile">
+        <exclude-pattern>*/class-psr7-bridge.php</exclude-pattern>
+        <exclude-pattern>*/wp-cli.php</exclude-pattern>
+        <exclude-pattern>*/oauth/class-wp-*</exclude-pattern>
+    </rule>
+
+    <!-- ─── parse_url in PSR7 bridge — implements PSR7 UriInterface;
+         wp_parse_url is not available in all PSR7 contexts -->
+    <rule ref="WordPress.WP.AlternativeFunctions">
+        <exclude-pattern>*/class-psr7-bridge.php</exclude-pattern>
+    </rule>
+
+    <!-- ─── Prepared SQL: table name interpolation — all $this->table()
+         calls return $wpdb->prefix . plugin slug (not user input) -->
+    <rule ref="WordPress.DB.PreparedSQL.InterpolatedNotPrepared">
+        <exclude-pattern>*/class-resource-index.php</exclude-pattern>
+        <exclude-pattern>*/class-soul.php</exclude-pattern>
+        <exclude-pattern>*/class-audit-log.php</exclude-pattern>
+        <exclude-pattern>*/class-settings.php</exclude-pattern>
+        <exclude-pattern>*/wp-cli.php</exclude-pattern>
+    </rule>
+    <rule ref="WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare">
+        <exclude-pattern>*/class-resource-index.php</exclude-pattern>
+    </rule>
+</ruleset>

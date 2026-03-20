@@ -1,0 +1,26 @@
+# Composer — vendor/ is excluded but composer.lock IS committed for reproducible installs
+vendor/
+
+# Build artifacts
+build/
+*.zip
+
+# PHPStan cache
+phpstan-result-cache.php
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# WP test suite (installed locally)
+/tmp/
+
+# Local environment
+.env
+.env.local
