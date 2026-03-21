@@ -38,6 +38,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.21] — 2026-03-20
+
+### Changed
+- Added `phpcs.xml` to align local PHPCS with the WordPress-Extra standard. Globally excludes unavoidable patterns with documented rationale: custom-table direct DB queries, schema-change migrations, table-name interpolation, dynamic IN-list placeholders, and `meta_query`/`tax_query` on indexed columns. No functional changes.
+
+---
+
 ## [1.0.20] — 2026-03-21
 
 ### Changed

@@ -95,6 +95,9 @@ Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin c
 
 == Changelog ==
 
+= 1.0.21 =
+* Added phpcs.xml to align local PHPCS with WordPress-Extra standard; globally excluded unavoidable patterns (custom-table direct queries, schema migrations, dynamic IN-list placeholders, meta_query/tax_query). No functional changes.
+
 = 1.0.20 =
 * Documentation overhaul — rewritten readme for clarity; all docs updated to reflect tools added in v1.0.18 and v1.0.19.
 

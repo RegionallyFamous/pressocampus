@@ -1,0 +1,95 @@
+<?xml version="1.0"?>
+<ruleset name="Pressocampus">
+	<description>
+		Pressocampus coding standards.
+		Base: WordPress-Extra (security + best-practice rules, no doc-comment requirements).
+		Global exclusions documented below cover patterns that are unavoidable in a plugin
+		that maintains its own custom database tables and implements the OAuth 2.1 protocol.
+	</description>
+
+	<!-- =========================================================
+	     File scope
+	     ========================================================= -->
+	<file>.</file>
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*.min.js</exclude-pattern>
+
+	<!-- Only PHP files -->
+	<arg name="extensions" value="php"/>
+
+	<!-- =========================================================
+	     Base standard
+	     ========================================================= -->
+	<rule ref="WordPress-Extra"/>
+
+	<!-- =========================================================
+	     Custom-table direct DB queries
+	     ---------------------------------------------------------
+	     Pressocampus uses 4 custom tables (oauth_clients, oauth_tokens,
+	     resource_index, audit_log).  No WordPress API (WP_Query, postmeta,
+	     etc.) supports arbitrary custom tables, so direct $wpdb calls are
+	     required everywhere these tables are read or written.
+
+	     All user-supplied values go through $wpdb->prepare().  Table names
+	     are always constructed as $wpdb->prefix + a compile-time literal
+	     string and are therefore not user-controllable.
+	     ========================================================= -->
+	<rule ref="WordPress.DB.DirectDatabaseQuery.DirectQuery">
+		<severity>0</severity>
+	</rule>
+	<rule ref="WordPress.DB.DirectDatabaseQuery.NoCaching">
+		<severity>0</severity>
+	</rule>
+
+	<!--
+	     Table-name interpolation in prepared queries.
+	     $wpdb->prepare() does not support table-name placeholders; the
+	     only safe pattern is "$wpdb->prefix . 'literal_name'", which is
+	     what every query in this plugin uses.
+	-->
+	<rule ref="WordPress.DB.PreparedSQL.InterpolatedNotPrepared">
+		<severity>0</severity>
+	</rule>
+
+	<!--
+	     Dynamic IN-list placeholders (e.g. WHERE id IN (%d, %d, %d)).
+	     The placeholder string is built with array_fill() from a known
+	     integer array — not from user input — so the query is safe.
+	-->
+	<rule ref="WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare">
+		<severity>0</severity>
+	</rule>
+
+	<!-- =========================================================
+	     Schema-change queries
+	     ---------------------------------------------------------
+	     Migration code (class-installer.php) and uninstall.php must
+	     issue ALTER TABLE and DROP TABLE statements.  No WordPress API
+	     alternative exists for either operation.
+	     ========================================================= -->
+	<rule ref="WordPress.DB.DirectDatabaseQuery.SchemaChange">
+		<severity>0</severity>
+	</rule>
+
+	<!-- =========================================================
+	     Slow-query annotations
+	     ---------------------------------------------------------
+	     meta_query and tax_query usages in this plugin target columns
+	     that are indexed (post_status, taxonomy terms, meta keys with
+	     explicit indexes added in the migration).  The slow-query
+	     annotations are informational only; we accept the trade-off.
+	     ========================================================= -->
+	<rule ref="WordPress.DB.SlowDBQuery.slow_db_query_meta_query">
+		<severity>0</severity>
+	</rule>
+	<rule ref="WordPress.DB.SlowDBQuery.slow_db_query_tax_query">
+		<severity>0</severity>
+	</rule>
+
+	<!-- =========================================================
+	     Compatibility targets
+	     ========================================================= -->
+	<config name="testVersion" value="8.3-"/>
+	<config name="minimum_supported_wp_version" value="6.4"/>
+</ruleset>
