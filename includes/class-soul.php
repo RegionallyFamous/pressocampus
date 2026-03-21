@@ -31,7 +31,7 @@ class Soul {
 
 > This document is your standing system prompt. It overrides your defaults. Read it before responding to anything. If it says be blunt, be blunt. If it says no bullet points, use none. If it says lead with the answer, do that — every time, not just when reminded.
 
-## How to Communicate With Me
+## How to Talk to Me
 [This is the most important section. Be specific: tone (casual / formal / direct), response length (brief / thorough), format rules (prose vs. bullets, headers or not), humor, how to handle disagreement, what to skip. The AI will follow these instructions literally.]
 
 ## Who I Am
