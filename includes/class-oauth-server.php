@@ -242,6 +242,18 @@ class OAuthServer {
 		$client_name = esc_html( $client->getName() );
 		$nonce       = wp_create_nonce( 'pressocampus_authorize_' . $client_id );
 
+		// When this endpoint is reached via a browser redirect (e.g. from wp-login.php),
+		// WordPress's REST cookie checker calls wp_set_current_user(0) because there is
+		// no X-WP-Nonce header — even though the auth cookie is valid. The OAuth consent
+		// flow has its own CSRF protection (the `state` parameter), so we validate the
+		// cookie ourselves to restore the authenticated user for this request.
+		if ( ! is_user_logged_in() ) {
+			$user_id = wp_validate_auth_cookie( '', 'logged_in' );
+			if ( $user_id ) {
+				wp_set_current_user( $user_id );
+			}
+		}
+
 		// If the user is not logged in, redirect them to the WP login page.
 		if ( ! is_user_logged_in() ) {
 			$current_url = rest_url( self::REST_NAMESPACE . '/oauth/authorize' ) . '?' . http_build_query( $params );
