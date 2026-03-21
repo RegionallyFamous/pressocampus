@@ -265,6 +265,10 @@ class OAuthServer {
 		$username     = esc_html( $current_user->display_name ?: $current_user->user_login );
 
 		// Hidden fields to pass through the OAuth parameters.
+		// _wpnonce must be a valid wp_rest nonce so that WordPress's REST cookie
+		// checker passes when the form is submitted (it validates $_REQUEST['_wpnonce']
+		// against the 'wp_rest' action).  Our own form-integrity nonce is stored in
+		// _pc_nonce under a different action so the two don't collide.
 		$hidden_fields = $this->build_hidden_fields(
 			array(
 				'client_id'             => $client_id,
@@ -274,7 +278,8 @@ class OAuthServer {
 				'code_challenge_method' => $code_challenge_method,
 				'response_type'         => $response_type,
 				'scope'                 => $scope,
-				'_wpnonce'              => $nonce,
+				'_wpnonce'              => wp_create_nonce( 'wp_rest' ),
+				'_pc_nonce'             => $nonce,
 			)
 		);
 
@@ -300,7 +305,7 @@ class OAuthServer {
 	public function handle_authorize_submit( \WP_REST_Request $request ): void {
 		$params    = $request->get_body_params();
 		$client_id = sanitize_text_field( $params['client_id'] ?? '' );
-		$nonce     = $params['_wpnonce'] ?? '';
+		$nonce     = $params['_pc_nonce'] ?? '';
 
 		if ( ! wp_verify_nonce( $nonce, 'pressocampus_authorize_' . $client_id ) ) {
 			wp_die(
@@ -308,6 +313,16 @@ class OAuthServer {
 				esc_html__( 'Authorization Error', 'pressocampus' ),
 				array( 'response' => 403 )
 			);
+		}
+
+		// Same cookie-restoration as the GET handler: the REST API requires a nonce for
+		// cookie auth, but the wp_rest nonce in _wpnonce satisfies that check above.
+		// Restore the user in case anything reset it before this handler ran.
+		if ( ! is_user_logged_in() ) {
+			$user_id = wp_validate_auth_cookie( '', 'logged_in' );
+			if ( $user_id ) {
+				wp_set_current_user( $user_id );
+			}
 		}
 
 		if ( ! is_user_logged_in() ) {

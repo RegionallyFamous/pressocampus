@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.3] — 2026-03-19
+
+### Fixed
+
+- **OAuth consent form submission returned 403 `rest_cookie_invalid_nonce`.** The consent form used `_wpnonce` for our own form-integrity nonce (`pressocampus_authorize_<client_id>` action). WordPress's REST cookie checker intercepts any `_wpnonce` POST parameter and validates it against the `wp_rest` action — causing a 403 before our handler ran. Fix: renamed our form nonce to `_pc_nonce` and added a separate `_wpnonce = wp_create_nonce('wp_rest')` field so the REST checker passes. Also applied the same auth-cookie restoration fix from 1.0.2 to the POST handler.
+
+---
+
 ## [1.0.2] — 2026-03-19
 
 ### Fixed
