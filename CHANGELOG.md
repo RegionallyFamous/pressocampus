@@ -29,6 +29,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.22] — 2026-03-21
+
+### Changed
+
+- **Custom brain icon in the WordPress admin menu.** Replaced the generic info-circle with a bespoke SVG brain: two C-shaped hemispheres with a visible interhemispheric fissure between them, bumpy outer edges representing the major lobes (frontal, parietal, temporal/occipital), and two sulcus groove cutouts per hemisphere using `fill-rule="evenodd"`. Designed to the Dashicons flat-icon style; renders cleanly at 20px menu size.
+
+---
+
 ## [1.0.21] — 2026-03-21
 
 ### Changed

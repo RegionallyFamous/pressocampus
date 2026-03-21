@@ -116,10 +116,23 @@ class Settings {
 	public function register_menu(): void {
         // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- base64 encoding an inline SVG menu icon, not obfuscating code
 		$svg_icon = base64_encode(
-			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
-			. '<path fill="#a0a5aa" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z'
-			. 'm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'
-			. 'm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>'
+			// Brain icon: two C-shaped hemispheres side by side with a 1-unit fissure gap.
+			// fill-rule="evenodd" punches the fold-line sub-paths through as transparent grooves.
+			'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">'
+			// Left hemisphere — outer bumpy C-shape, closes via Z back to the straight inner edge.
+			// Two sub-paths (fold lines) are cut out via evenodd: an upper sulcus and a lower sulcus.
+			. '<path fill="#a0a5aa" fill-rule="evenodd" d="'
+			. 'M9.5 3.5C7 2 4.5 2.5 3 5C1.5 7 1.5 9.5 3 11C2 13 3 15.5 5 17C6.5 18.5 8.5 18 9.5 17.5Z'
+			. 'M4 8C3.5 9 3.5 10.5 4 11.5L6 11.5C5.5 10.5 5.5 9 6 8Z'
+			. 'M3.5 13C3.5 14.5 4.5 15.5 5.5 16L7 16C6 15.5 5 14.5 5 13Z'
+			. '"/>'
+			// Right hemisphere — mirror of left around x=10.
+			. '<path fill="#a0a5aa" fill-rule="evenodd" d="'
+			. 'M10.5 3.5C13 2 15.5 2.5 17 5C18.5 7 18.5 9.5 17 11C18 13 17 15.5 15 17C13.5 18.5 11.5 18 10.5 17.5Z'
+			. 'M16 8C16.5 9 16.5 10.5 16 11.5L14 11.5C14.5 10.5 14.5 9 14 8Z'
+			. 'M16.5 13C16.5 14.5 15.5 15.5 14.5 16L13 16C14 15.5 15 14.5 15 13Z'
+			. '"/>'
+			. '</svg>'
 		);
 
 		add_menu_page(
