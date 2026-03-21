@@ -510,7 +510,7 @@ CSS;
 					<?php endif; ?>
 				</div>
 				<div style="background:#dcdcde;border-radius:3px;height:6px;overflow:hidden">
-					<div style="background:<?php echo esc_attr( $bar_color ); ?>;width:<?php echo esc_attr( $char_pct ); ?>%;height:6px;border-radius:3px;transition:width 0.3s"></div>
+					<div style="background:<?php echo esc_attr( $bar_color ); ?>;width:<?php echo esc_attr( (string) $char_pct ); ?>%;height:6px;border-radius:3px;transition:width 0.3s"></div>
 				</div>
 			</div>
 

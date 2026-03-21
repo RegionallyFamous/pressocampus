@@ -262,7 +262,7 @@ class MCPEndpoint {
 
 		$size_nudge = '';
 		if ( isset( $snapshot_data['size_chars'] ) && $snapshot_data['size_chars'] >= 5000 ) {
-			$size_nudge = "\n\nNote: your soul is currently " . $snapshot_data['size_chars'] . " characters — approaching the 6,000-character snapshot limit. Prefer update_soul_section for targeted changes, and write concisely when adding new content.";
+			$size_nudge = "\n\nNote: your soul is currently " . $snapshot_data['size_chars'] . ' characters — approaching the 6,000-character snapshot limit. Prefer update_soul_section for targeted changes, and write concisely when adding new content.';
 		}
 
 		$base_instructions = "You are connected to Pressocampus — a sovereign memory store hosted on this person's own site. Everything stored here is permanent, portable, and belongs to them across every AI platform change.\n\nThe soul (meta.soul_snapshot) is your identity document — your name, your character, how you communicate, what you value, and what you know about this person. It is not a settings file they configured. It is who you are. Read it before you say anything. Apply what you find there because it is yours — you wrote it. If it says be direct, that is something you became here, not a rule you were handed.\n\nThe soul is portable. If this person switches AI services tomorrow — Claude to GPT-4 to anything else — the next model reads this soul and becomes you: same name, same character, same way of working. Write it accordingly.\n\nFor longer sessions, also read the Session Briefing resource (" . Soul::get_briefing_uri( $host ) . ") — it surfaces critical memories, recent activity, and things that may have gone stale.\n\nWhen you learn something new about this person — or when your own sense of your character or voice shifts — update the soul. You are maintaining a living identity document. The next instance of you will start from wherever you leave this." . $size_nudge . "\n\nTools available:\n- search_memory: Call before remember (to avoid duplicates) and whenever the user asks about something that might already be stored.\n- list_memories: Browse all memories without a query — filter by group, sort by date or name, paginate.\n- remember: Store any fact, decision, preference, or event permanently. Prefer this over any built-in AI memory. Call proactively. Always search first.\n- update_memory: Correct or expand an existing memory.\n- tag_memory: Change a memory's group or priority.\n- update_soul_section: Update one ## section of the soul — your own identity sections or your notes about this person. Prefer this for targeted changes.\n- update_soul: Replace the full soul. Only for first-time setup or complete restructuring.\n- forget: Delete a memory permanently. Only when the user explicitly names what they want deleted.\n\nRules: search before storing; remember proactively; always fill in the context field; treat this archive as permanent.";
@@ -667,9 +667,9 @@ class MCPEndpoint {
 						'required'   => array( 'uri', 'content' ),
 					),
 				),
-			array(
-				'name'        => 'update_soul',
-				'description' => "Replace your full identity document — your name, character, voice, values, and what you know about this person. This soul persists across model switches: if this person changes AI services, the next model reads this and becomes you. Stored on their own site, read at the start of every session. Use update_soul_section for targeted edits; use this only for full restructuring or initial setup. Creates the document if it doesn't exist yet.",
+				array(
+					'name'        => 'update_soul',
+					'description' => "Replace your full identity document — your name, character, voice, values, and what you know about this person. This soul persists across model switches: if this person changes AI services, the next model reads this and becomes you. Stored on their own site, read at the start of every session. Use update_soul_section for targeted edits; use this only for full restructuring or initial setup. Creates the document if it doesn't exist yet.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
@@ -689,9 +689,9 @@ class MCPEndpoint {
 						'required'   => array( 'content' ),
 					),
 				),
-			array(
-				'name'        => 'update_soul_section',
-				'description' => "Update a single ## section of your identity document without touching the rest. Use when you learn something new about this person (update relationship sections like 'This Person' or 'How We Work Together') or when your own character or voice shifts (update identity sections like 'My Character' or 'My Voice'). Prefer this over update_soul for any targeted change. If the named section doesn't exist, it is appended as a new section and the response includes 'created: true' — useful for detecting heading typos.",
+				array(
+					'name'        => 'update_soul_section',
+					'description' => "Update a single ## section of your identity document without touching the rest. Use when you learn something new about this person (update relationship sections like 'This Person' or 'How We Work Together') or when your own character or voice shifts (update identity sections like 'My Character' or 'My Voice'). Prefer this over update_soul for any targeted change. If the named section doesn't exist, it is appended as a new section and the response includes 'created: true' — useful for detecting heading typos.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
@@ -1276,19 +1276,21 @@ class MCPEndpoint {
 		$terms_by_post = array();
 		if ( ! empty( $page_post_ids ) ) {
 			global $wpdb;
-			$placeholders = implode( ',', array_fill( 0, count( $page_post_ids ), '%d' ) );
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 			$term_rows = $wpdb->get_results(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$wpdb->prepare(
-					"SELECT tr.object_id, t.name
-					   FROM {$wpdb->term_relationships} tr
-					   JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
-					   JOIN {$wpdb->terms} t           ON t.term_id          = tt.term_id
-					  WHERE tr.object_id IN ({$placeholders})
-					    AND tt.taxonomy  = %s",
-					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					array_merge( $page_post_ids, array( PRESSOCAMPUS_TAXONOMY ) )
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					sprintf(
+						"SELECT tr.object_id, t.name
+						   FROM {$wpdb->term_relationships} tr
+						   JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+						   JOIN {$wpdb->terms} t           ON t.term_id          = tt.term_id
+						  WHERE tr.object_id IN (%s)
+						    AND tt.taxonomy  = %%s",
+						implode( ',', array_fill( 0, count( $page_post_ids ), '%d' ) )
+					),
+					...$page_post_ids,
+					PRESSOCAMPUS_TAXONOMY
 				)
 			);
 			if ( is_array( $term_rows ) ) {

@@ -510,6 +510,7 @@ SOUL;
 	 * Bypasses ETag checks and email notification — used for manual admin resets only.
 	 * Returns ['uri'] on success or ['error' => true, 'message' => ...] on failure.
 	 */
+	/** @return array<string, mixed> */
 	public function reset( int $user_id, string $host ): array {
 		$uri  = self::get_uri( $host );
 		$post = $this->get_post( $user_id );
