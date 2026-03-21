@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.2] — 2026-03-19
+
+### Fixed
+
+- **OAuth consent screen unreachable after WordPress login.** When the authorization flow redirected an unauthenticated user to `wp-login.php`, WordPress's REST API cookie checker (`rest_cookie_check_errors`) called `wp_set_current_user(0)` on the redirect back because no `X-WP-Nonce` header was present. This caused `is_user_logged_in()` to return `false` even for a freshly authenticated user, sending them to the admin dashboard instead of the consent screen. Fixed by calling `wp_validate_auth_cookie()` directly before the login check — the OAuth consent flow has its own CSRF protection via the `state` parameter, so the nonce requirement does not apply.
+
+---
+
 ## [1.0.1] — 2026-03-19
 
 ### Fixed
