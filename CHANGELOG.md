@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.6] — 2026-03-21
+
+### Fixed
+
+- **Fatal error on activation when OpenSSL extension is missing.** `OPENSSL_KEYTYPE_RSA` is a constant provided by the PHP `openssl` extension. Referencing it when the extension is absent throws an `Error` in PHP 8.x (rather than the notice/warning of older PHP versions), causing WordPress to report "Plugin could not be activated because it triggered a fatal error." Fixed by adding an explicit `extension_loaded('openssl')` check in `Installer::activate()` that deactivates the plugin and shows a clear error before any OpenSSL code runs.
+- **Fatal error on any OAuth / MCP connection attempt.** The four PSR-7 adapter classes in `includes/oauth/class-psr7-bridge.php` (`WPStream`, `WPUri`, `WPResponse`, `WPServerRequest`) were absent from the plugin's autoloader map, so PHP could not find them when the OAuth authorization and token handlers ran — producing a "Class not found" fatal. All four classes are now registered in the autoloader.
+- **Admin settings JS extracted to `assets/js/admin-settings.js`** and properly enqueued via `wp_enqueue_script` + `wp_localize_script`, removing ~150 lines of inline `<script>` from the PHP template.
+- **`last_used` → `last_used_at` column alias bug** in the connected-apps query corrected.
+- **`wp_unslash()` added** to all `$_GET` reads on the settings page.
+- **WordPress.org `readme.txt`** added.
+
+---
+
 ## [1.0.5] — 2026-03-21
 
 ### Fixed

@@ -3,7 +3,7 @@
  * Plugin Name:       Pressocampus
  * Plugin URI:        https://github.com/RegionallyFamous/pressocampus
  * Description:       Turn WordPress into your AI's persistent memory store. Implements MCP Protocol (2025-03-26) over WordPress REST API with OAuth 2.1.
- * Version:           1.0.5
+ * Version:           1.0.6
  * Requires at least: 6.4
  * Tested up to:      6.7
  * Requires PHP:      8.3
@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Constants
 // ---------------------------------------------------------------------------
 
-define( 'PRESSOCAMPUS_VERSION', '1.0.5' );
+define( 'PRESSOCAMPUS_VERSION', '1.0.6' );
 define( 'PRESSOCAMPUS_DB_VERSION', '1.2' );
 define( 'PRESSOCAMPUS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PRESSOCAMPUS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -107,6 +107,10 @@ function pressocampus_autoload( string $class_name ): void {
 		'Pressocampus\\OAuth\\WPRefreshTokenRepository' => 'includes/oauth/class-wp-refresh-token-repository.php',
 		'Pressocampus\\OAuth\\WPScopeRepository'        => 'includes/oauth/class-wp-scope-repository.php',
 		'Pressocampus\\OAuth\\UserEntity'               => 'includes/oauth/class-user-entity.php',
+		'Pressocampus\\OAuth\\WPStream'                 => 'includes/oauth/class-psr7-bridge.php',
+		'Pressocampus\\OAuth\\WPUri'                    => 'includes/oauth/class-psr7-bridge.php',
+		'Pressocampus\\OAuth\\WPResponse'               => 'includes/oauth/class-psr7-bridge.php',
+		'Pressocampus\\OAuth\\WPServerRequest'          => 'includes/oauth/class-psr7-bridge.php',
 	);
 	if ( isset( $map[ $class_name ] ) ) {
 		require_once PRESSOCAMPUS_PLUGIN_DIR . $map[ $class_name ];

@@ -47,6 +47,11 @@ class Installer {
 			}
 		}
 
+		if ( ! extension_loaded( 'openssl' ) ) {
+			deactivate_plugins( plugin_basename( PRESSOCAMPUS_PLUGIN_FILE ) );
+			wp_die( esc_html__( 'Pressocampus requires the PHP OpenSSL extension. Please enable it in your server configuration, then reactivate the plugin.', 'pressocampus' ) );
+		}
+
 		if ( ! get_option( 'pressocampus_rsa_private_key' ) ) {
 			$config      = array(
 				'digest_alg'       => 'sha256',
@@ -62,10 +67,10 @@ class Installer {
 					update_option( 'pressocampus_rsa_public_key', $public_key_details['key'] );
 				}
 			} else {
-						update_option(
-							'pressocampus_migration_error',
-							'Failed to generate or export RSA key pair. OAuth will not work until this is resolved. Check that the openssl extension is available.'
-						);
+				update_option(
+					'pressocampus_migration_error',
+					'Failed to generate or export RSA key pair. OAuth will not work until this is resolved. Check that the openssl extension is available.'
+				);
 			}
 		}
 
