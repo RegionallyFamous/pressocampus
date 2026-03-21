@@ -47,10 +47,15 @@ AI Client                           Pressocampus                    You
 
 AI clients register themselves automatically via `POST /pressocampus/v1/oauth/register`. No manual app registration required.
 
+Registered client credentials:
+
+- **Client ID** — a 32-character cryptographically secure random hex string (`bin2hex(random_bytes(16))`), not a predictable time-based value.
+- **Client secret** — generated with `wp_generate_password(40)` and stored as a bcrypt hash (`PASSWORD_BCRYPT`). The plaintext secret is returned to the client once at registration and never stored. Existing clients registered before v1.0.25 with plaintext secrets continue to work.
+
 ### Access tokens
 
 - JWT format, RSA-signed
-- Expire after **1 hour** (configurable)
+- Expire after **8 hours** (configurable)
 - Include the WordPress user ID as the subject
 
 ### Refresh tokens
@@ -99,9 +104,11 @@ To prevent abuse and accidental runaway automation:
 | Read operations | 60 per minute per user |
 | Write operations | 30 per minute per user |
 
+The `initialize` handshake also counts against the read limit. This prevents a scenario where an attacker rapidly reconnects to trigger unbounded soul-creation database work without being throttled.
+
 When a limit is exceeded for a tool call, the tool returns a `rate_limit_exceeded` error response (the MCP layer returns an `isError: true` content block). For `resources/list` and `resources/read`, a JSON-RPC error is returned. In both cases the HTTP status is 400.
 
-Limits are tracked using WordPress object caching (falls back to transients if no object cache is present).
+Limits are tracked per access token using WordPress object caching (falls back to transients if no external object cache is present). An authenticated session with no token ID is denied rather than allowed to bypass throttling.
 
 ---
 
@@ -144,7 +151,7 @@ All memory content is sanitized before storage:
 - **Unauthorized access** — no token, no access
 - **Cross-user data access** — per-user query scoping
 - **Token interception** — PKCE in the authorization flow
-- **Concurrent write conflicts** — ETag-based optimistic locking
+- **Concurrent write conflicts** — ETag-based optimistic locking on memories; MySQL advisory locks (`GET_LOCK`) on soul creation and index rebuilds
 - **Runaway AI writes** — rate limiting
 - **Accidental deletion** — soul/index are protected, deletion requires explicit context
 - **History audit trail** — every write operation is logged with agent name, timestamp, and context so you can review exactly what your AI has been doing

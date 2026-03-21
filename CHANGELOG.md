@@ -7,6 +7,38 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.25] — 2026-03-21
+
+### Security
+
+- **CSPRNG OAuth client IDs** — `uniqid()` replaced with `bin2hex(random_bytes(16))`. Client IDs are now 32-character cryptographically random hex strings rather than predictable time-based identifiers.
+- **Bcrypt client secrets** — newly registered OAuth clients have their secrets hashed with `password_hash(PASSWORD_BCRYPT)` before storage; validation uses `password_verify()`. Existing clients with plaintext secrets continue to work transparently.
+- **Rate limit on `initialize`** — the `initialize` handshake now counts against the read rate limit, preventing a loophole where repeated reconnections could trigger unbounded soul-creation DB work without being throttled.
+- **Rate limit bypass closed** — `check_rate_limit()` previously returned `true` (allow) when a user was authenticated but had an empty `token_id`. It now returns `false` in that case, denying the request rather than silently bypassing all throttling.
+
+### Fixed
+
+- **`tool_forget` index desync** — `wp_delete_post()` return value is now checked before rewriting back-references or removing the index row. If the post cannot be deleted the tool returns an error immediately and the index stays in sync.
+- **Back-reference rewrite ordering** — `rewrite_related_uri()` now runs after the post is confirmed deleted, not before, so it is never called for a post that still exists.
+- **Uncaught `RuntimeException` in soul tools** — `tool_update_soul` and `tool_update_soul_section` now wrap `Soul::update()` and `Soul::update_section()` in a `try/catch` block. A soul-lock race (previously a 500) now returns a clean `soul_locked` tool error.
+
+### Performance
+
+- **`rebuild_index` no longer loads all posts into memory** — `WP_Query(posts_per_page=-1)` replaced with a batched 200-row direct SQL JOIN against the resource index table. Only the four columns actually needed (`ID`, `post_title`, `post_modified_gmt`, `uri`) are fetched.
+- **`get_user_groups` single-query** — the previous two-step approach (`get_user_post_ids()` returning an unbounded int array → `get_terms(object_ids:)` building a potentially 1 000-item `IN` clause) is replaced by a single `JOIN` across `term_relationships`, `term_taxonomy`, `terms`, and the resource index. The now-unused `get_user_post_ids()` method has been removed.
+- **`rewrite_related_uri` cache priming** — added an early-return when no back-references exist, and a `update_postmeta_cache()` call before the update loop to batch-prime postmeta, eliminating N+1 `get_post_meta` queries when multiple memories reference the deleted URI.
+
+### Reliability
+
+- **Atomic soul-creation lock** — `Soul::create()` replaces the `get_transient` / `set_transient` race window with `SELECT GET_LOCK()` (timeout 0). The MySQL advisory lock is connection-scoped: if the PHP process dies mid-creation the lock is automatically released, and no other process can enter the creation path simultaneously.
+- **Atomic rebuild lock** — `ResourceIndex::rebuild_if_dirty()` uses the same `GET_LOCK` pattern, replacing the previous transient-based lock that had the same race window.
+
+### Code quality
+
+- **Rate-limit helpers** — the 9 duplicated `get_option('pressocampus_settings')['rate_limit_*']` + `tool_error()` blocks have been extracted to `write_rate_limit_error()` and `read_rate_limit_error()` private helpers. Fixes a hardcoded `'Read rate limit reached (60/min).'` message in `tool_search_memory` that ignored the configured limit.
+
+---
+
 ## [1.0.24] — 2026-03-21
 
 ### Added
@@ -365,3 +397,4 @@ Initial public release.
 [1.0.21]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.21
 [1.0.22]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.22
 [1.0.24]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.24
+[1.0.25]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.25

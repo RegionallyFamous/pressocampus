@@ -262,6 +262,21 @@ test: add coverage for ETag conflict scenario
 
 Schema changes go in `class-installer.php` in `run_migrations()`. Use `dbDelta()` for table changes. Increment `PRESSOCAMPUS_DB_VERSION` in `pressocampus.php`.
 
+### Concurrency and locking
+
+Pressocampus uses **MySQL advisory locks** (`GET_LOCK` / `RELEASE_LOCK`) for operations that must not run concurrently across PHP-FPM workers:
+
+| Lock name | Held by | Purpose |
+|-----------|---------|---------|
+| `pc_soul_{user_id}` | `Soul::create()` | Prevents duplicate soul post creation under concurrent `initialize` requests |
+| `pc_rebuild_{user_id}` | `ResourceIndex::rebuild_if_dirty()` | Prevents two workers from rebuilding the memory index simultaneously |
+
+Both locks use `timeout=0` (return immediately if already held) rather than blocking. The caller either proceeds or returns a retryable error / skips the rebuild gracefully.
+
+Advisory locks are connection-scoped: if the PHP process dies mid-operation, MySQL releases the lock automatically, so there is no risk of a permanently stuck lock.
+
+Do **not** use `get_transient` / `set_transient` pairs as mutexes — there is a race window between the read and the write. Use `GET_LOCK` for cross-process critical sections.
+
 ---
 
 ## Local development tips

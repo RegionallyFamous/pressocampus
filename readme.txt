@@ -3,7 +3,7 @@ Contributors: regionallyfamous
 Tags: ai, memory, mcp, claude, chatgpt
 Requires at least: 6.4
 Tested up to: 6.9
-Stable tag: 1.0.24
+Stable tag: 1.0.25
 Requires PHP: 8.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -95,6 +95,19 @@ Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin c
 
 == Changelog ==
 
+= 1.0.25 =
+* Security: OAuth client IDs now use a cryptographically secure random generator instead of `uniqid()`.
+* Security: New OAuth client secrets are hashed with bcrypt; existing plaintext secrets continue to work.
+* Security: The `initialize` handshake is now rate-limited, preventing repeated reconnections from bypassing throttling.
+* Security: Fixed rate-limit bypass where an authenticated session without a `token_id` could skip all throttling.
+* Fixed: `tool_forget` now verifies `wp_delete_post()` succeeded before touching back-references or the index row.
+* Fixed: `update_soul` / `update_soul_section` return a clean tool error on soul-lock race instead of a 500.
+* Performance: `rebuild_index` uses batched direct SQL instead of `WP_Query(posts_per_page=-1)`.
+* Performance: `get_user_groups` uses a single JOIN query — removes potential 1 000-item `IN` clause.
+* Performance: `rewrite_related_uri` primes postmeta cache before the update loop (eliminates N+1 queries).
+* Reliability: Soul creation and index rebuild use MySQL `GET_LOCK` to prevent race conditions.
+* Code quality: Rate-limit error messages centralised; fixes hardcoded limit value in `search_memory`.
+
 = 1.0.24 =
 * Updated to MCP spec 2025-11-25: version negotiation, `MCP-Protocol-Version` header validation, `Origin` → 403 DNS-rebinding protection, `GET /brain` → 405, `isError: false` on tool results.
 * Custom brain icon in the WordPress admin menu.
@@ -174,6 +187,9 @@ Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin c
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.25 =
+Security hardening, performance improvements, and reliability fixes. Existing OAuth clients continue to work. No database changes required — update and go.
 
 = 1.0.24 =
 MCP spec 2025-11-25 upgrade and admin UI improvements. No database changes required — update and go.
