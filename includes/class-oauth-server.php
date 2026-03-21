@@ -240,13 +240,15 @@ class OAuthServer {
 
 		$site_name   = get_bloginfo( 'name' );
 		$client_name = esc_html( $client->getName() );
-		$nonce       = wp_create_nonce( 'pressocampus_authorize_' . $client_id );
 
 		// When this endpoint is reached via a browser redirect (e.g. from wp-login.php),
 		// WordPress's REST cookie checker calls wp_set_current_user(0) because there is
 		// no X-WP-Nonce header — even though the auth cookie is valid. The OAuth consent
 		// flow has its own CSRF protection (the `state` parameter), so we validate the
 		// cookie ourselves to restore the authenticated user for this request.
+		// This MUST run before wp_create_nonce() — nonces are tied to the current user,
+		// so creating the nonce before restoring the user produces a user-0 nonce that
+		// the POST handler (running as the real user) can never verify.
 		if ( ! is_user_logged_in() ) {
 			$user_id = wp_validate_auth_cookie( '', 'logged_in' );
 			if ( $user_id ) {
@@ -263,6 +265,10 @@ class OAuthServer {
 
 		$current_user = wp_get_current_user();
 		$username     = esc_html( $current_user->display_name ?: $current_user->user_login );
+
+		// Both nonces are created here — after the user has been fully restored —
+		// so they are bound to the correct user and will verify on form submission.
+		$nonce = wp_create_nonce( 'pressocampus_authorize_' . $client_id );
 
 		// Hidden fields to pass through the OAuth parameters.
 		// _wpnonce must be a valid wp_rest nonce so that WordPress's REST cookie
