@@ -60,13 +60,19 @@ class MCPEndpoint {
 		$this->set_cors_headers();
 
 		if ( ! Auth::get_current_user_id() ) {
-			return $this->error_response(
+			$response = $this->error_response(
 				null,
 				-32001,
 				'Unauthorized',
 				401,
 				array( 'reauth_url' => rest_url( 'pressocampus/v1/oauth/authorize' ) )
 			);
+			$response->header(
+				'WWW-Authenticate',
+				'Bearer realm="' . esc_url_raw( home_url() ) . '"'
+				. ', resource_metadata="' . esc_url_raw( home_url( '/.well-known/oauth-protected-resource' ) ) . '"'
+			);
+			return $response;
 		}
 
 		$body = $request->get_json_params();

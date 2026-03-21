@@ -35,6 +35,38 @@ class Auth {
 		private Cache $cache,
 	) {
 		add_filter( 'rest_authentication_errors', array( $this, 'authenticate_request' ) );
+		add_filter( 'rest_post_dispatch', array( $this, 'add_www_authenticate_header' ), 10, 3 );
+	}
+
+	/**
+	 * Add WWW-Authenticate header to 401 responses from our namespace so MCP clients
+	 * (including Claude) can discover the OAuth authorization server via RFC 9728.
+	 *
+	 * @param \WP_HTTP_Response $response Outgoing response.
+	 * @param \WP_REST_Server   $server   REST server instance.
+	 * @param \WP_REST_Request  $request  Incoming request.
+	 * @return \WP_HTTP_Response
+	 */
+	public function add_www_authenticate_header( \WP_HTTP_Response $response, \WP_REST_Server $server, \WP_REST_Request $request ): \WP_HTTP_Response { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- $server required by filter signature
+		if ( $response->get_status() !== 401 ) {
+			return $response;
+		}
+
+		$route = $request->get_route();
+		if (
+			! str_contains( $route, '/pressocampus/v1/' ) &&
+			$route !== '/pressocampus/v1/mcp'
+		) {
+			return $response;
+		}
+
+		$response->header(
+			'WWW-Authenticate',
+			'Bearer realm="' . esc_url_raw( home_url() ) . '"'
+			. ', resource_metadata="' . esc_url_raw( home_url( '/.well-known/oauth-protected-resource' ) ) . '"'
+		);
+
+		return $response;
 	}
 
 	// Setter injection (called from Plugin after both objects are constructed)

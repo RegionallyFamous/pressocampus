@@ -89,6 +89,25 @@ class OAuthServer {
 		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
 		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
 
+		// RFC 9728 — OAuth 2.0 Protected Resource Metadata.
+		// MCP clients (including Claude) resolve this first from the WWW-Authenticate
+		// header to find the correct authorization server for this resource.
+		if ( $path === '/.well-known/oauth-protected-resource' ) {
+			$document = array(
+				'resource'                 => home_url( '/brain' ),
+				'authorization_servers'    => array( home_url() ),
+				'bearer_methods_supported' => array( 'header' ),
+				'scopes_supported'         => array( PRESSOCAMPUS_SCOPE ),
+			);
+
+			nocache_headers();
+			header( 'Content-Type: application/json; charset=utf-8' );
+			header( 'Access-Control-Allow-Origin: *' );
+			echo wp_json_encode( $document );
+			exit;
+		}
+
+		// RFC 8414 — Authorization Server Metadata.
 		if ( $path !== '/.well-known/oauth-authorization-server' ) {
 			return;
 		}
@@ -109,6 +128,7 @@ class OAuthServer {
 
 		nocache_headers();
 		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Access-Control-Allow-Origin: *' );
 		echo wp_json_encode( $document );
 		exit;
 	}
@@ -549,7 +569,28 @@ class OAuthServer {
 
 		$private_key_pem = (string) get_option( 'pressocampus_rsa_private_key', '' );
 		$public_key_pem  = (string) get_option( 'pressocampus_rsa_public_key', '' );
-		$enc_key_ascii   = (string) get_option( 'pressocampus_encryption_key', '' );
+
+		// Auto-generate the RSA key pair if it was never created (e.g. activation
+		// ran on a server that lacked OpenSSL, which is now fixed).
+		if ( $private_key_pem === '' && extension_loaded( 'openssl' ) ) {
+			$res = openssl_pkey_new(
+				array(
+					'digest_alg'       => 'sha256',
+					'private_key_bits' => 2048,
+					'private_key_type' => OPENSSL_KEYTYPE_RSA,
+				)
+			);
+			if ( $res && openssl_pkey_export( $res, $private_key_pem ) && $private_key_pem !== '' ) {
+				$details = openssl_pkey_get_details( $res );
+				if ( is_array( $details ) && isset( $details['key'] ) ) {
+					$public_key_pem = $details['key'];
+					update_option( 'pressocampus_rsa_private_key', $private_key_pem );
+					update_option( 'pressocampus_rsa_public_key', $public_key_pem );
+				}
+			}
+		}
+
+		$enc_key_ascii = (string) get_option( 'pressocampus_encryption_key', '' );
 
 		if ( $enc_key_ascii === '' ) {
 			$enc_key       = Key::createNewRandomKey();

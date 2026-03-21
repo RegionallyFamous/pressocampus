@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.7] — 2026-03-21
+
+### Fixed
+
+- **"Authorization with the MCP server failed" on Claude / other MCP clients.** Three root causes fixed:
+  1. The `401 Unauthorized` response was missing the `WWW-Authenticate` header that MCP clients require to discover the OAuth authorization server. All 401s from the `/mcp` endpoint now include `WWW-Authenticate: Bearer realm="…", resource_metadata="…"`.
+  2. The `/.well-known/oauth-protected-resource` document (RFC 9728) was not implemented. MCP clients resolve this URL first (from the `WWW-Authenticate` header) to find the authorization server. The endpoint now returns the correct resource and authorization server metadata.
+  3. If the RSA key pair was never generated (because an earlier activation failure left it blank), the token endpoint would fail silently with a 500. `get_authorization_server()` now auto-generates the key pair on first call if it is missing.
+- Both `/.well-known` endpoints now return `Access-Control-Allow-Origin: *` so browser-based OAuth discovery tools can fetch them.
+
+---
+
 ## [1.0.6] — 2026-03-21
 
 ### Fixed
