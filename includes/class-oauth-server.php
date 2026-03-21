@@ -83,15 +83,30 @@ class OAuthServer {
 		);
 	}
 
-	// /.well-known/oauth-authorization-server
+	// /.well-known/oauth-authorization-server  +  /brain/oauth/* bypass
+
+	/**
+	 * Base URL for all OAuth endpoints served via /brain/oauth/* rewrites.
+	 * Using /brain/oauth/* instead of /wp-json/... bypasses any security
+	 * plugin or server rule that blocks unauthenticated REST API access,
+	 * while still routing through WordPress's standard parse_request flow.
+	 */
+	private static function oauth_base(): string {
+		return home_url( '/brain/oauth' );
+	}
 
 	public function handle_well_known(): void {
 		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
 		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
 
+		// /brain/oauth/* — OAuth endpoint bypass served directly from parse_request
+		// so that security plugins blocking /wp-json/ cannot interfere.
+		if ( str_starts_with( $path, '/brain/oauth/' ) ) {
+			$this->handle_oauth_bypass( $path );
+			return;
+		}
+
 		// RFC 9728 — OAuth 2.0 Protected Resource Metadata.
-		// MCP clients (including Claude) resolve this first from the WWW-Authenticate
-		// header to find the correct authorization server for this resource.
 		if ( $path === '/.well-known/oauth-protected-resource' ) {
 			$document = array(
 				'resource'                 => home_url( '/brain' ),
@@ -112,13 +127,13 @@ class OAuthServer {
 			return;
 		}
 
-		$base = rest_url( self::REST_NAMESPACE . '/oauth' );
+		$oauth_base = self::oauth_base();
 
 		$document = array(
 			'issuer'                                => home_url(),
-			'authorization_endpoint'                => $base . '/authorize',
-			'token_endpoint'                        => $base . '/token',
-			'registration_endpoint'                 => $base . '/register',
+			'authorization_endpoint'                => $oauth_base . '/authorize',
+			'token_endpoint'                        => $oauth_base . '/token',
+			'registration_endpoint'                 => $oauth_base . '/register',
 			'response_types_supported'              => array( 'code' ),
 			'grant_types_supported'                 => array( 'authorization_code', 'refresh_token' ),
 			'code_challenge_methods_supported'      => array( 'S256' ),
@@ -130,6 +145,124 @@ class OAuthServer {
 		header( 'Content-Type: application/json; charset=utf-8' );
 		header( 'Access-Control-Allow-Origin: *' );
 		echo wp_json_encode( $document );
+		exit;
+	}
+
+	/**
+	 * Handle /brain/oauth/{register|authorize|token} requests directly from
+	 * parse_request, bypassing the REST API dispatcher entirely.
+	 *
+	 * This ensures the OAuth flow works even when a security plugin or server
+	 * rule blocks unauthenticated access to /wp-json/* endpoints.
+	 */
+	private function handle_oauth_bypass( string $path ): void {
+		// Strip trailing slash and extract the endpoint name.
+		$endpoint = basename( rtrim( $path, '/' ) );
+		if ( ! in_array( $endpoint, array( 'register', 'authorize', 'token' ), true ) ) {
+			return; // Unknown path — let WordPress handle it normally.
+		}
+
+		$method = strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) );
+
+		// CORS preflight.
+		if ( $method === 'OPTIONS' ) {
+			nocache_headers();
+			header( 'Access-Control-Allow-Origin: *' );
+			header( 'Access-Control-Allow-Methods: GET, POST, OPTIONS' );
+			header( 'Access-Control-Allow-Headers: Authorization, Content-Type' );
+			http_response_code( 200 );
+			exit;
+		}
+
+		// Build a WP_REST_Request from PHP superglobals so the existing
+		// handler methods can be called without modification.
+		$request = new \WP_REST_Request( $method, '/' . self::REST_NAMESPACE . '/oauth/' . $endpoint );
+		$request->set_query_params( $_GET );
+
+		if ( $method === 'POST' ) {
+			$raw          = (string) file_get_contents( 'php://input' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$content_type = (string) ( $_SERVER['CONTENT_TYPE'] ?? '' );
+			if ( str_contains( $content_type, 'application/json' ) ) {
+				$decoded = json_decode( $raw, true );
+				if ( is_array( $decoded ) ) {
+					$request->set_body_params( $decoded );
+				}
+				$request->set_body( $raw );
+			} else {
+				$request->set_body_params( $_POST ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce checked inside each handler
+				$request->set_body( $raw );
+			}
+		}
+
+		nocache_headers();
+		header( 'Access-Control-Allow-Origin: *' );
+
+		switch ( $endpoint ) {
+			case 'register':
+				if ( $method !== 'POST' ) {
+					$this->send_bypass_method_not_allowed( 'POST' );
+				}
+				$this->send_bypass_response( $this->handle_register( $request ) );
+				break;
+
+			case 'token':
+				if ( $method !== 'POST' ) {
+					$this->send_bypass_method_not_allowed( 'POST' );
+				}
+				$this->send_bypass_response( $this->handle_token( $request ) );
+				break;
+
+			case 'authorize':
+				if ( $method === 'GET' ) {
+					$this->handle_authorize_form( $request );
+					// handle_authorize_form outputs HTML and calls exit.
+				} elseif ( $method === 'POST' ) {
+					$this->handle_authorize_submit( $request );
+					// handle_authorize_submit redirects and calls exit.
+				} else {
+					$this->send_bypass_method_not_allowed( 'GET, POST' );
+				}
+				break;
+		}
+
+		exit;
+	}
+
+	/** Output a WP_REST_Response or WP_Error as JSON and exit. */
+	private function send_bypass_response( \WP_REST_Response|\WP_Error $response ): void {
+		if ( is_wp_error( $response ) ) {
+			$data   = $response->get_error_data();
+			$status = is_array( $data ) ? (int) ( $data['status'] ?? 500 ) : 500;
+			http_response_code( $status );
+			header( 'Content-Type: application/json; charset=utf-8' );
+			echo wp_json_encode(
+				array(
+					'error'             => $response->get_error_code(),
+					'error_description' => $response->get_error_message(),
+				)
+			);
+		} else {
+			http_response_code( $response->get_status() );
+			header( 'Content-Type: application/json; charset=utf-8' );
+			foreach ( $response->get_headers() as $name => $value ) {
+				header( $name . ': ' . $value );
+			}
+			echo wp_json_encode( $response->get_data() );
+		}
+		exit;
+	}
+
+	/** Send 405 Method Not Allowed and exit. */
+	private function send_bypass_method_not_allowed( string $allow ): void {
+		http_response_code( 405 );
+		header( 'Allow: ' . $allow );
+		header( 'Content-Type: application/json; charset=utf-8' );
+		echo wp_json_encode(
+			array(
+				'error'             => 'method_not_allowed',
+				'error_description' => 'Allowed: ' . $allow,
+			)
+		);
 		exit;
 	}
 
@@ -278,7 +411,7 @@ class OAuthServer {
 
 		// If the user is not logged in, redirect them to the WP login page.
 		if ( ! is_user_logged_in() ) {
-			$current_url = rest_url( self::REST_NAMESPACE . '/oauth/authorize' ) . '?' . http_build_query( $params );
+			$current_url = self::oauth_base() . '/authorize?' . http_build_query( $params );
 			wp_safe_redirect( wp_login_url( $current_url ) );
 			exit;
 		}
@@ -711,7 +844,7 @@ class OAuthServer {
 	 * @param array{site_name: string, client_name: string, username: string, hidden_fields: string} $vars Template variables: site_name, client_name, username, hidden_fields.
 	 */
 	private function render_consent_page( array $vars ): string {
-		$submit_url = esc_url( rest_url( self::REST_NAMESPACE . '/oauth/authorize' ) );
+		$submit_url = esc_url( self::oauth_base() . '/authorize' );
 
 		$lbl_title = esc_html(
 			sprintf(

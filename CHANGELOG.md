@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.15] — 2026-03-21
+
+### Fixed
+
+- **OAuth endpoints now served via `/brain/oauth/*` bypass routes** that are handled directly in WordPress's `parse_request` hook — the same mechanism that makes `/brain` work. This completely bypasses the REST API dispatcher (and any security plugin or server rule that blocks `/wp-json/*` for unauthenticated requests). All three endpoints are bypassed: `/brain/oauth/register`, `/brain/oauth/authorize`, `/brain/oauth/token`.
+- **Well-known metadata updated** — `/.well-known/oauth-authorization-server` now advertises the `/brain/oauth/*` bypass URLs as `authorization_endpoint`, `token_endpoint`, and `registration_endpoint`. Claude will use these URLs for the entire OAuth flow.
+- **Consent form action updated** — the allow/deny form POSTs to `/brain/oauth/authorize` instead of `/wp-json/...`, so form submission cannot be blocked.
+- **Diagnostics: registered routes check** — new check reports which Pressocampus REST routes are actually registered in WordPress's route table, making it easy to see whether a security plugin is removing routes after registration.
+- **Diagnostics: OAuth endpoint checks updated** — tests the `/brain/oauth/*` bypass URL first, then the `/wp-json/` URL, then the `?rest_route=` fallback. The primary check is now the one Claude actually uses.
+
+---
+
 ## [1.0.14] — 2026-03-21
 
 ### Fixed

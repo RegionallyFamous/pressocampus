@@ -3,7 +3,7 @@
  * Plugin Name:       Pressocampus
  * Plugin URI:        https://github.com/RegionallyFamous/pressocampus
  * Description:       Turn WordPress into your AI's persistent memory store. Implements MCP Protocol (2025-03-26) over WordPress REST API with OAuth 2.1.
- * Version:           1.0.14
+ * Version:           1.0.15
  * Requires at least: 6.4
  * Tested up to:      6.7
  * Requires PHP:      8.3
@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Constants
 // ---------------------------------------------------------------------------
 
-define( 'PRESSOCAMPUS_VERSION', '1.0.14' );
+define( 'PRESSOCAMPUS_VERSION', '1.0.15' );
 define( 'PRESSOCAMPUS_DB_VERSION', '1.2' );
 define( 'PRESSOCAMPUS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PRESSOCAMPUS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

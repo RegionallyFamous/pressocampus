@@ -1259,17 +1259,48 @@ CSS;
 			);
 		}
 
-		// 10. OAuth register endpoint — test pretty URL, fall back to ?rest_route= form
+		// 10. Registered REST routes — confirm WordPress actually has the OAuth routes
+		$server     = rest_get_server();
+		$all_routes = array_keys( $server->get_routes() );
+		$pc_routes  = array_values( array_filter( $all_routes, fn( $r ) => str_contains( $r, 'pressocampus' ) ) );
+		$has_mcp    = in_array( '/pressocampus/v1/mcp', $pc_routes, true );
+		$has_reg    = in_array( '/pressocampus/v1/oauth/register', $pc_routes, true );
+		$has_tok    = in_array( '/pressocampus/v1/oauth/token', $pc_routes, true );
+		$has_auth   = in_array( '/pressocampus/v1/oauth/authorize', $pc_routes, true );
+		$routes_ok  = $has_mcp && $has_reg && $has_tok && $has_auth;
+		$checks[]   = array(
+			'label'  => 'Registered REST routes',
+			'pass'   => $routes_ok,
+			'detail' => $routes_ok
+				? 'MCP + 3 OAuth routes registered (' . count( $pc_routes ) . ' total)'
+				: 'Missing: '
+					. implode(
+						', ',
+						array_filter(
+							array(
+								$has_mcp ? null : '/pressocampus/v1/mcp',
+								$has_reg ? null : '/pressocampus/v1/oauth/register',
+								$has_tok ? null : '/pressocampus/v1/oauth/token',
+								$has_auth ? null : '/pressocampus/v1/oauth/authorize',
+							)
+						)
+					),
+		);
+
+		// 11. OAuth register endpoint — test /brain/oauth/register bypass first,
+		// then fall back to /wp-json/ and ?rest_route= for diagnostics.
+		$reg_bypass = home_url( '/brain/oauth/register' );
 		$reg_pretty = rest_url( 'pressocampus/v1/oauth/register' );
 		$reg_qs     = add_query_arg( 'rest_route', '/pressocampus/v1/oauth/register', home_url( '/' ) );
 
-		$this->check_rest_endpoint( $checks, 'OAuth register endpoint', $reg_pretty, $reg_qs );
+		$this->check_oauth_bypass_endpoint( $checks, 'OAuth register endpoint', $reg_bypass, $reg_pretty, $reg_qs );
 
-		// 11. Token endpoint reachable
+		// 12. Token endpoint — same triple-test strategy.
+		$tok_bypass = home_url( '/brain/oauth/token' );
 		$tok_pretty = rest_url( 'pressocampus/v1/oauth/token' );
 		$tok_qs     = add_query_arg( 'rest_route', '/pressocampus/v1/oauth/token', home_url( '/' ) );
 
-		$this->check_rest_endpoint( $checks, 'OAuth token endpoint', $tok_pretty, $tok_qs );
+		$this->check_oauth_bypass_endpoint( $checks, 'OAuth token endpoint', $tok_bypass, $tok_pretty, $tok_qs );
 
 		wp_send_json_success(
 			array(
@@ -1283,60 +1314,85 @@ CSS;
 	// phpcs:enable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 
 	/**
-	 * Test a REST endpoint via HEAD, trying the pretty URL first then the ?rest_route= form.
-	 * Populates $checks with one result entry.
-	 *
-	 * HEAD on a POST-only route legitimately returns 405 (Method Not Allowed) — that counts as reachable.
+	 * Test an OAuth endpoint using the /brain/oauth/* bypass URL first, then
+	 * the /wp-json/ pretty URL, then the ?rest_route= form.
+	 * HEAD on a POST-only route returns 405 (Method Not Allowed) — counts as reachable.
 	 *
 	 * @param array<int,array<string,mixed>> $checks   Reference to the checks array.
-	 * @param string                         $label    Human-readable label for this check.
-	 * @param string                         $pretty   Pretty URL (e.g. /wp-json/namespace/route).
-	 * @param string                         $fallback Query-string URL (e.g. /?rest_route=/namespace/route).
+	 * @param string                         $label    Human-readable label.
+	 * @param string                         $bypass   /brain/oauth/* bypass URL.
+	 * @param string                         $pretty   /wp-json/* pretty URL.
+	 * @param string                         $fallback ?rest_route= URL.
 	 */
-	private function check_rest_endpoint( array &$checks, string $label, string $pretty, string $fallback ): void {
+	private function check_oauth_bypass_endpoint(
+		array &$checks,
+		string $label,
+		string $bypass,
+		string $pretty,
+		string $fallback
+	): void {
 		$opts = array(
 			'timeout'   => 8,
 			'sslverify' => false,
 			'method'    => 'HEAD',
 		);
 
-		$resp = wp_remote_request( $pretty, $opts );
-		$code = is_wp_error( $resp ) ? 0 : wp_remote_retrieve_response_code( $resp );
+		// 1. Bypass URL — this is what Claude will actually use.
+		$bypass_resp = wp_remote_request( $bypass, $opts );
+		$bypass_code = is_wp_error( $bypass_resp ) ? 0 : wp_remote_retrieve_response_code( $bypass_resp );
 
-		// 200/201/405 on the pretty URL — all good.
-		if ( in_array( $code, array( 200, 201, 405 ), true ) ) {
+		if ( in_array( $bypass_code, array( 200, 201, 400, 405 ), true ) ) {
 			$checks[] = array(
 				'label'  => $label,
 				'pass'   => true,
-				'detail' => 'HTTP ' . $code . ' (pretty URL reachable: ' . $pretty . ')',
+				'detail' => 'HTTP ' . $bypass_code . ' · bypass URL reachable: ' . $bypass,
 			);
 			return;
 		}
 
-		// Pretty URL failed — try ?rest_route= fallback.
-		$fb_resp = wp_remote_request( $fallback, $opts );
-		$fb_code = is_wp_error( $fb_resp ) ? 0 : wp_remote_retrieve_response_code( $fb_resp );
+		// 2. /wp-json/ pretty URL.
+		$resp = wp_remote_request( $pretty, $opts );
+		$code = is_wp_error( $resp ) ? 0 : wp_remote_retrieve_response_code( $resp );
 
-		if ( in_array( $fb_code, array( 200, 201, 405 ), true ) ) {
+		if ( in_array( $code, array( 200, 201, 400, 405 ), true ) ) {
 			$checks[] = array(
 				'label'  => $label,
 				'pass'   => false,
 				'warn'   => true,
-				'detail' => 'Pretty URL returned HTTP ' . $code . ' but ?rest_route= fallback works (HTTP ' . $fb_code . '). '
-					. 'Your Nginx config is not routing /wp-json/ to WordPress. '
-					. 'Add: location /wp-json/ { try_files $uri $uri/ /index.php$is_args$args; }',
+				'detail' => 'Bypass URL returned HTTP ' . $bypass_code
+					. ' but /wp-json/ pretty URL works (HTTP ' . $code . '). '
+					. 'Update the plugin to v1.0.15+ to fix this.',
 			);
 			return;
 		}
 
-		// Both failed.
+		// 3. ?rest_route= fallback.
+		$fb_resp = wp_remote_request( $fallback, $opts );
+		$fb_code = is_wp_error( $fb_resp ) ? 0 : wp_remote_retrieve_response_code( $fb_resp );
+
+		if ( in_array( $fb_code, array( 200, 201, 400, 405 ), true ) ) {
+			$checks[] = array(
+				'label'  => $label,
+				'pass'   => false,
+				'warn'   => true,
+				'detail' => 'Both bypass and pretty URLs returned HTTP ' . $bypass_code
+					. ' / ' . $code . ' but ?rest_route= fallback works (HTTP ' . $fb_code . '). '
+					. 'Update the plugin to v1.0.15+ to fix this.',
+			);
+			return;
+		}
+
+		// All three failed.
+		$bypass_detail = is_wp_error( $bypass_resp ) ? $bypass_resp->get_error_message() : 'HTTP ' . $bypass_code;
 		$pretty_detail = is_wp_error( $resp ) ? $resp->get_error_message() : 'HTTP ' . $code;
 		$fb_detail     = is_wp_error( $fb_resp ) ? $fb_resp->get_error_message() : 'HTTP ' . $fb_code;
 		$checks[]      = array(
 			'label'  => $label,
 			'pass'   => false,
-			'detail' => 'Pretty URL: ' . $pretty_detail . '  ·  ?rest_route= fallback: ' . $fb_detail
-				. '  ·  REST API may be disabled by a security plugin',
+			'detail' => 'Bypass: ' . $bypass_detail
+				. '  ·  /wp-json/: ' . $pretty_detail
+				. '  ·  ?rest_route=: ' . $fb_detail
+				. '  ·  All three paths failed — check server error log',
 		);
 	}
 
