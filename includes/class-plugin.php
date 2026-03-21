@@ -29,6 +29,13 @@ class Plugin {
 	private Settings $settings;
 
 	private function __construct() {
+		// Run DB migrations automatically when the schema version is behind.
+		// This covers plugin updates done by file-copy (FTP/ZIP) without a
+		// deactivate → reactivate cycle, which would otherwise skip the activation hook.
+		if ( get_option( 'pressocampus_db_version' ) !== PRESSOCAMPUS_DB_VERSION ) {
+			Installer::run_migrations();
+		}
+
 		$this->cache          = new Cache();
 		$this->resource_index = new ResourceIndex();
 		$this->soul           = new Soul( $this->resource_index );
@@ -96,7 +103,9 @@ class Plugin {
 	 *
 	 * Maps yoursite.com/brain → REST route /pressocampus/v1/mcp
 	 * so users share a clean URL instead of the full wp-json path.
-	 * Rewrite rules are flushed on activation via Installer::activate().
+	 * Rewrite rules are flushed on activation via Installer::activate() and
+	 * automatically whenever the plugin version changes (covers file-copy updates
+	 * that skip the activation hook).
 	 */
 	public function register_brain_rewrite(): void {
 		add_rewrite_rule(
@@ -104,6 +113,13 @@ class Plugin {
 			'index.php?rest_route=/pressocampus/v1/mcp',
 			'top'
 		);
+
+		// One-time flush after a plugin version change so the /brain route
+		// is always compiled into the WordPress rewrite table.
+		if ( get_option( 'pressocampus_plugin_version' ) !== PRESSOCAMPUS_VERSION ) {
+			flush_rewrite_rules( false );
+			update_option( 'pressocampus_plugin_version', PRESSOCAMPUS_VERSION );
+		}
 	}
 
 	public function register_post_status(): void {

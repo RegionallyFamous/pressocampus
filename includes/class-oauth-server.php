@@ -142,7 +142,7 @@ class OAuthServer {
 		$reg_key   = 'pc_reg_' . $ip_hash;
 		$reg_count = (int) get_transient( $reg_key );
 
-		if ( $reg_count >= 10 ) {
+		if ( $reg_count >= 50 ) {
 			return new \WP_Error(
 				'too_many_requests',
 				'Too many client registration attempts from this address. Please try again later.',

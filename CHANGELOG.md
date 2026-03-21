@@ -7,6 +7,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.9] — 2026-03-21
+
+### Fixed
+
+- **Plugin updates via file-copy (FTP/ZIP upload) no longer break the `/brain` URL or OAuth flow.** Previously, only a full deactivate → reactivate cycle would create the database tables and flush the WordPress rewrite rules. If a user updated the plugin by uploading new files without deactivating, the `/brain` URL returned 404 and OAuth tokens could not be stored. The plugin now auto-runs database migrations on every boot when the schema version is behind, and automatically flushes rewrite rules once whenever the plugin version changes. No manual reactivation is needed after an update.
+- **DCR rate limit raised from 10 to 50 registrations per IP per hour.** After multiple failed authorization attempts (each of which can trigger a new OAuth client registration from Claude's servers), the old limit could be exhausted, silently blocking further connection attempts.
+
+---
+
 ## [1.0.8] — 2026-03-21
 
 ### Fixed
