@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.12] — 2026-03-21
+
+### Fixed
+
+- **Plain permalinks are now auto-upgraded to `/%postname%/`.** The plugin cannot function without the WordPress rewrite engine — `/brain` and all OAuth REST endpoints require pretty permalinks. On activation and on every subsequent boot while plain permalinks are detected, the plugin now automatically sets `permalink_structure` to `/%postname%/` and flushes rewrite rules. No manual step required.
+
+---
+
 ## [1.0.11] — 2026-03-21
 
 ### Fixed

@@ -103,9 +103,10 @@ class Plugin {
 	 *
 	 * Maps yoursite.com/brain → REST route /pressocampus/v1/mcp
 	 * so users share a clean URL instead of the full wp-json path.
-	 * Rewrite rules are flushed on activation via Installer::activate() and
-	 * automatically whenever the plugin version changes (covers file-copy updates
-	 * that skip the activation hook).
+	 * Rewrite rules are flushed on activation and whenever the plugin
+	 * version changes (covers file-copy updates that skip the hook).
+	 * Plain permalinks are auto-upgraded to /%postname%/ because the
+	 * plugin cannot function without the rewrite engine.
 	 */
 	public function register_brain_rewrite(): void {
 		add_rewrite_rule(
@@ -114,9 +115,15 @@ class Plugin {
 			'top'
 		);
 
-		// One-time flush after a plugin version change so the /brain route
-		// is always compiled into the WordPress rewrite table.
-		if ( get_option( 'pressocampus_plugin_version' ) !== PRESSOCAMPUS_VERSION ) {
+		// Auto-upgrade plain permalinks — nothing works without them.
+		$needs_flush = false;
+		if ( get_option( 'permalink_structure', '' ) === '' ) {
+			update_option( 'permalink_structure', '/%postname%/' );
+			$needs_flush = true;
+		}
+
+		// One-time flush when the plugin version changes or permalinks were just fixed.
+		if ( $needs_flush || get_option( 'pressocampus_plugin_version' ) !== PRESSOCAMPUS_VERSION ) {
 			flush_rewrite_rules( false );
 			update_option( 'pressocampus_plugin_version', PRESSOCAMPUS_VERSION );
 		}

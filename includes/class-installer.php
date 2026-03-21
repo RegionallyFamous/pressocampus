@@ -87,6 +87,12 @@ class Installer {
 			wp_schedule_event( time(), 'weekly', 'pressocampus_purge_audit_log' );
 		}
 
+		// Ensure pretty permalinks are enabled — the /brain URL and REST API
+		// OAuth endpoints both require rewrite rules to work.
+		if ( get_option( 'permalink_structure', '' ) === '' ) {
+			update_option( 'permalink_structure', '/%postname%/' );
+		}
+
 		set_transient( 'pressocampus_show_welcome', true, 30 );
 		flush_rewrite_rules();
 	}
