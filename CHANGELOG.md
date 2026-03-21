@@ -90,6 +90,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.22] — 2026-03-20
+
+### Fixed
+- **`/brain` rewrite rule missing after deactivate → reactivate** (`class-installer.php`, `class-plugin.php`). The activation hook was calling `flush_rewrite_rules()` at the end of `Installer::activate()`, but `add_rewrite_rule('^brain/?$', ...)` is registered on the `init` hook — which has not fired yet during activation. The flush compiled the rewrite table without the `/brain` rule. Subsequently, the version-change guard in `register_brain_rewrite()` correctly skipped a second flush because the stored version matched the installed version (same-version reactivation). The result was a permanent 404 until the admin manually visited Settings → Permalinks and saved. Fix: replace the direct `flush_rewrite_rules()` in `activate()` with a short-lived transient flag (`pressocampus_needs_flush`), consumed inside `register_brain_rewrite()` after `add_rewrite_rule()` has been called. Also `delete_option('pressocampus_plugin_version')` on activation so the version-change guard independently triggers a flush as a belt-and-suspenders fallback.
+
+---
+
 ## [1.0.21] — 2026-03-20
 
 ### Changed

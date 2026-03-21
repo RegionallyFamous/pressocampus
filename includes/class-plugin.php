@@ -114,25 +114,42 @@ class Plugin {
 	 * plugin cannot function without the rewrite engine.
 	 */
 	public function register_brain_rewrite(): void {
+		// Register the rule FIRST — flush_rewrite_rules() below will compile
+		// this into the DB.  Any flush that happens before this line (e.g. the
+		// one in Installer::activate()) will NOT include the /brain rule.
 		add_rewrite_rule(
 			'^brain/?$',
 			'index.php?rest_route=/pressocampus/v1/mcp',
 			'top'
 		);
 
+		$needs_flush = false;
+		$hard_flush  = false;
+
 		// Auto-upgrade plain permalinks — nothing works without them.
-		$fixed_permalinks = false;
 		if ( get_option( 'permalink_structure', '' ) === '' ) {
 			update_option( 'permalink_structure', '/%postname%/' );
-			$fixed_permalinks = true;
+			$needs_flush = true;
+			$hard_flush  = true; // Force .htaccess rewrite on Apache.
 		}
 
-		// One-time flush when the plugin version changes or permalinks were just fixed.
-		// Use a hard flush ($hard = true) when fixing permalinks so that .htaccess is
-		// also rewritten — a soft flush only updates the DB and won't help if Apache's
-		// rewrite rules were never written (which is the case for plain-permalink sites).
-		if ( $fixed_permalinks || get_option( 'pressocampus_plugin_version' ) !== PRESSOCAMPUS_VERSION ) {
-			flush_rewrite_rules( $fixed_permalinks );
+		// Version change (covers file-copy upgrades and same-version reactivation
+		// after delete_option() in Installer::activate()).
+		if ( get_option( 'pressocampus_plugin_version' ) !== PRESSOCAMPUS_VERSION ) {
+			$needs_flush = true;
+		}
+
+		// Post-activation flush flag set by Installer::activate().
+		// Using a transient instead of calling flush_rewrite_rules() directly
+		// in the activation hook guarantees the /brain rule is already registered
+		// when the flush compiles the rewrite table.
+		if ( get_transient( 'pressocampus_needs_flush' ) ) {
+			delete_transient( 'pressocampus_needs_flush' );
+			$needs_flush = true;
+		}
+
+		if ( $needs_flush ) {
+			flush_rewrite_rules( $hard_flush );
 			update_option( 'pressocampus_plugin_version', PRESSOCAMPUS_VERSION );
 		}
 	}

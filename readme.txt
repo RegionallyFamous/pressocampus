@@ -122,6 +122,9 @@ Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin c
 * `get_user_groups()` result is now cached in the object cache for 5 minutes.
 * Access token TTL raised from 1 hour to 8 hours.
 
+= 1.0.22 =
+* Fixed: /brain rewrite rule missing after deactivate → reactivate. The activation hook was calling flush_rewrite_rules() before the init hook had a chance to register the /brain rule, so the compiled rewrite table went to the database without it. The fix uses a transient flag so the flush happens on the next init call, after the rule is registered.
+
 = 1.0.21 =
 * Added phpcs.xml to align local PHPCS with WordPress-Extra standard; globally excluded unavoidable patterns (custom-table direct queries, schema migrations, dynamic IN-list placeholders, meta_query/tax_query). No functional changes.
 

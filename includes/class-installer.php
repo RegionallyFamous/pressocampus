@@ -74,7 +74,19 @@ class Installer {
 		}
 
 		set_transient( 'pressocampus_show_welcome', true, 30 );
-		flush_rewrite_rules();
+
+		// Signal that rewrite rules need flushing after activation.
+		// We CANNOT call flush_rewrite_rules() here because add_rewrite_rule()
+		// for /brain is registered on the 'init' hook, which has not fired yet
+		// at activation time.  Flushing now would compile the rewrite table
+		// without the /brain rule.  The flag is consumed by register_brain_rewrite()
+		// on the very next init call, after the rule has been added.
+		set_transient( 'pressocampus_needs_flush', true, 60 );
+
+		// Also clear the stored version so that the version-change guard in
+		// register_brain_rewrite() independently triggers a flush — covers
+		// edge cases where the transient is lost before init fires.
+		delete_option( 'pressocampus_plugin_version' );
 	}
 
 	public static function deactivate(): void {
