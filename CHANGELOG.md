@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.5] — 2026-03-21
+
+### Fixed
+
+- **"Security check failed. Please try again." on OAuth consent form submission.** WordPress nonces are tied to the current user ID. The REST API's cookie checker (`rest_cookie_check_errors`) resets the user to 0 when no `X-WP-Nonce` header is present — which is always the case after a redirect from `wp-login.php`. The consent form was calling `wp_create_nonce()` before the auth-cookie restoration, generating a nonce for user 0. When the form was submitted `wp_verify_nonce()` ran against the real authenticated user and always failed. Fixed by moving both nonce creations (`_pc_nonce` and `_wpnonce`) to after the user has been fully restored from the auth cookie.
+
+---
+
 ## [1.0.4] — 2026-03-21
 
 ### Changed
