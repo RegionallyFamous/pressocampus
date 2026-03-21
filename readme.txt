@@ -3,7 +3,7 @@ Contributors: regionallyfamous
 Tags: ai, memory, mcp, claude, chatgpt
 Requires at least: 6.4
 Tested up to: 6.9
-Stable tag: 1.0.22
+Stable tag: 1.0.24
 Requires PHP: 8.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -95,6 +95,20 @@ Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin c
 
 == Changelog ==
 
+= 1.0.24 =
+* Updated to MCP spec 2025-11-25: version negotiation, `MCP-Protocol-Version` header validation, `Origin` → 403 DNS-rebinding protection, `GET /brain` → 405, `isError: false` on tool results.
+* Custom brain icon in the WordPress admin menu.
+* Admin menu item moved to the bottom of the sidebar.
+
+= 1.0.22 =
+* First-install Quick Start card: three-step onboarding panel with Brain URL, copy-paste config snippets for Claude Desktop / Cursor / generic MCP, and an inline Test Connection button.
+* Fixed HTTP status propagation: ETag conflict now returns 409 at the transport level.
+* Fixed duplicate detection: `possible_related` (≥ 40% similarity) replaces incorrect `possible_duplicate`; `possible_contradiction` threshold raised to 70%.
+* Soul update emails are now synchronous.
+* Added `expires_at` support to the `remember` tool.
+* `get_user_groups()` result is now cached in the object cache for 5 minutes.
+* Access token TTL raised from 1 hour to 8 hours.
+
 = 1.0.21 =
 * Added phpcs.xml to align local PHPCS with WordPress-Extra standard; globally excluded unavoidable patterns (custom-table direct queries, schema migrations, dynamic IN-list placeholders, meta_query/tax_query). No functional changes.
 
@@ -160,6 +174,12 @@ Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin c
 * Initial release.
 
 == Upgrade Notice ==
+
+= 1.0.24 =
+MCP spec 2025-11-25 upgrade and admin UI improvements. No database changes required — update and go.
+
+= 1.0.22 =
+Adds first-install onboarding card, fixes duplicate detection and HTTP status codes. No database changes required.
 
 = 1.0.20 =
 Documentation update only — no database or configuration changes required.

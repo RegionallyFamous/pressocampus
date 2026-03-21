@@ -1,6 +1,6 @@
 # Connecting Your AI
 
-Pressocampus works with any AI client that supports **MCP 2025-03-26** over HTTP. This page covers the most common clients.
+Pressocampus works with any AI client that supports **MCP 2025-11-25** over HTTP. This page covers the most common clients.
 
 Your Brain Endpoint URL is on `Pressocampus → Settings → Connect`. It looks like:
 
@@ -85,7 +85,7 @@ Restart Cursor. Authorize when prompted.
 
 ## Other MCP clients
 
-Any client implementing MCP 2025-03-26 with Streamable HTTP transport will work. The configuration is typically:
+Any client implementing MCP 2025-11-25 with Streamable HTTP transport will work. The configuration is typically:
 
 | Field | Value |
 |-------|-------|

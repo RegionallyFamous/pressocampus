@@ -238,7 +238,7 @@ Pressocampus logs errors to `wp-content/debug.log`.
 curl -s -X POST https://yoursite.com/wp-json/pressocampus/v1/mcp \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-03-26","clientInfo":{"name":"debug","version":"1.0"},"capabilities":{}},"id":1}' | jq .
+  -d '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2025-11-25","clientInfo":{"name":"debug","version":"1.0"},"capabilities":{}},"id":1}' | jq .
 ```
 
 ### Check discovery endpoints

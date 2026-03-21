@@ -13,7 +13,7 @@
 [![CI](https://github.com/RegionallyFamous/pressocampus/actions/workflows/ci.yml/badge.svg)](https://github.com/RegionallyFamous/pressocampus/actions)
 [![PHP 8.3+](https://img.shields.io/badge/PHP-8.3%2B-777bb4?logo=php&logoColor=white)](https://php.net)
 [![WordPress 6.4+](https://img.shields.io/badge/WordPress-6.4%2B-21759b?logo=wordpress&logoColor=white)](https://wordpress.org)
-[![MCP 2025-03-26](https://img.shields.io/badge/MCP-2025--03--26-6366f1)](https://modelcontextprotocol.io)
+[![MCP 2025-11-25](https://img.shields.io/badge/MCP-2025--11--25-6366f1)](https://modelcontextprotocol.io)
 [![License: GPL v2](https://img.shields.io/badge/License-GPL%20v2-blue.svg)](https://www.gnu.org/licenses/gpl-2.0)
 
 <br>

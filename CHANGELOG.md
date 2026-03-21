@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.24] — 2026-03-21
+
+### Added
+
+- **MCP spec 2025-11-25 compliance** — updated from protocol version `2025-03-26` to `2025-11-25`:
+  - Version negotiation in `initialize`: the server now echoes the client's requested `protocolVersion` back if supported (`2025-03-26` or `2025-11-25`), rather than always returning the server's own version. Older clients remain fully compatible.
+  - `MCP-Protocol-Version` request header is now validated on every POST. Unsupported values receive a `400 Bad Request` with the list of accepted versions.
+  - `Origin` → `403 Forbidden` enforcement: when a browser `Origin` header is present but not in the configured allowlist, all handlers now return `403` as required for DNS-rebinding protection.
+  - `GET /brain` returns `405 Method Not Allowed` (SSE not supported), signalling clients to use plain JSON responses only.
+  - `Access-Control-Allow-Headers` now includes `MCP-Protocol-Version` and `MCP-Session-Id`.
+  - `serverInfo` now includes a `title` field alongside `name`.
+  - All successful tool results now carry `"isError": false` explicitly.
+
+### Changed
+
+- **Custom brain icon in the WordPress admin menu** — replaced the generic info-circle with a bespoke SVG brain icon. Designed to the Dashicons flat-icon style; renders cleanly at 20 px menu size.
+- **Admin menu item moved to the bottom of the sidebar** — menu position changed from `30` (between Pages and Comments) to `100` (below the bottom separator, after Settings).
+
+---
+
 ## [1.0.22] — 2026-03-21
 
 ### Added
@@ -26,22 +46,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **`get_user_groups()` cached** — result is now stored in the object cache for 5 minutes and invalidated on every write via `mark_dirty()`, eliminating a full index-table scan on every MCP `initialize`.
 - **Auth fallback path logged** — `validate_with_direct_resource_server()` now writes an `error_log()` warning when hit, making bootstrap injection failures visible in production logs.
 - **Access token TTL raised** — `PRESSOCAMPUS_ACCESS_TOKEN_TTL` changed from `PT1H` (1 hour) to `PT8H` (8 hours). Users who return to Claude after a gap will no longer be forced to re-authorize mid-session.
-
----
-
-## [1.0.23] — 2026-03-21
-
-### Changed
-
-- **Admin menu item moved to the bottom of the sidebar.** Menu position changed from `30` (mid-sidebar, between Pages and Comments) to `100` (below the bottom separator, after Settings).
-
----
-
-## [1.0.22] — 2026-03-21
-
-### Changed
-
-- **Custom brain icon in the WordPress admin menu.** Replaced the generic info-circle with a bespoke SVG brain: two C-shaped hemispheres with a visible interhemispheric fissure between them, bumpy outer edges representing the major lobes (frontal, parietal, temporal/occipital), and two sulcus groove cutouts per hemisphere using `fill-rule="evenodd"`. Designed to the Dashicons flat-icon style; renders cleanly at 20px menu size.
 
 ---
 
@@ -359,3 +363,5 @@ Initial public release.
 [1.0.19]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.19
 [1.0.20]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.20
 [1.0.21]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.21
+[1.0.22]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.22
+[1.0.24]: https://github.com/RegionallyFamous/pressocampus/releases/tag/v1.0.24

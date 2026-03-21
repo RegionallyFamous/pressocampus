@@ -12,7 +12,7 @@
 | PHP | 8.3 | Typed properties, `json_validate()`, `sodium` extension |
 | PHP extensions | `openssl`, `sodium` | Both are standard on any modern host |
 | HTTPS | Required | OAuth 2.1 requires a secure origin |
-| MCP client | MCP 2025-03-26 | Claude Desktop, Cursor, or any compliant client |
+| MCP client | MCP 2025-11-25 | Claude Desktop, Cursor, or any compliant client |
 
 ### Checking your PHP version
 
