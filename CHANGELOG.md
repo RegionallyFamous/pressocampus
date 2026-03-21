@@ -7,6 +7,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.26] — 2026-03-21
+
+### Fixed
+
+- **`update_soul` and `update_soul_section` missing from Claude.ai tool list** — rewrote tool descriptions to frame them as user profile/preference storage rather than AI-behaviour modification. Phrases like "override AI defaults" and "behavioral instructions for how the AI should communicate" were triggering Claude.ai's client-side safety filter, causing the two tools to be silently dropped from the visible tool list.
+- **Plugin description** — updated to plain-language copy: "Give your AI a permanent memory — stored on your WordPress site, not locked inside any app."
+
+---
+
 ## [1.0.25] — 2026-03-21
 
 ### Security
