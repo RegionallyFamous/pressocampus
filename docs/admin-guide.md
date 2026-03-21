@@ -39,10 +39,6 @@ Available snippets:
 - **Cursor** — native `"type": "http"` format for `~/.cursor/mcp.json`
 - **Generic MCP** — standard endpoint + auth format
 
-### Starter Prompt
-
-A copy button that gives you a natural-language prompt to paste into your first conversation with a newly connected AI. This prompt instructs the AI to read your soul, introduce itself, and begin the onboarding flow.
-
 ### Soul status
 
 A one-line indicator showing:

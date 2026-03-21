@@ -40,7 +40,9 @@ Pressocampus installs on any WordPress site and turns it into a **personal memor
 
 - **Remember** facts, preferences, decisions, and context permanently
 - **Search** across everything it knows about you
+- **Browse** your memory store by group or date with `list_memories`
 - **Maintain a Soul** — a persistent identity file that follows your AI across every platform you use
+- **Start every session with a briefing** — a snapshot of your critical memories, recent changes, and anything that may need a refresh
 - **Never forget** — unless you explicitly ask it to
 
 The AI does all the work. WordPress holds the memory. You own both.
@@ -137,9 +139,9 @@ We built Pressocampus for regular people. Not developers. Not AI researchers. Pe
 |-------|-------------|
 | [Installation](docs/installation.md) | Requirements, setup, server config |
 | [Connecting Your AI](docs/connecting-your-ai.md) | Claude, Cursor, generic MCP clients |
-| [The Soul](docs/the-soul.md) | What the Soul is, how to shape it |
+| [The Soul](docs/the-soul.md) | Soul, Session Briefing, and the Index |
 | [Memories](docs/memories.md) | Groups, priorities, TTL, search |
-| [MCP Tools Reference](docs/mcp-tools-reference.md) | All 6 tools, parameters, examples |
+| [MCP Tools Reference](docs/mcp-tools-reference.md) | All 8 tools, parameters, examples |
 | [Admin Guide](docs/admin-guide.md) | History, Settings, Export/Import |
 | [WP-CLI Reference](docs/wp-cli-reference.md) | Every command with examples |
 | [Security](docs/security.md) | OAuth 2.1, PKCE, threat model |

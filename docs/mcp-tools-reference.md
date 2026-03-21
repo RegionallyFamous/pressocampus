@@ -1,6 +1,6 @@
 # MCP Tools Reference
 
-Pressocampus exposes 6 tools to connected AI clients via the MCP `tools/list` and `tools/call` methods. These are the only way memories are written, updated, or deleted — there is no UI for writing memories.
+Pressocampus exposes **8 tools** to connected AI clients via the MCP `tools/list` and `tools/call` methods. These are the only way memories are written, updated, or deleted — there is no UI for writing memories.
 
 All tools require an authorized OAuth 2.1 connection. All write operations are rate-limited to **30 per minute**.
 
@@ -281,6 +281,115 @@ User: "What do we know about how I like to receive feedback?"
 AI: [calls search_memory("feedback communication preferences")]
 AI: "Based on your stored memories, you prefer written feedback over verbal,
     with specific actionable items rather than general observations..."
+```
+
+---
+
+## `list_memories`
+
+Browse your memory store — useful for getting an overview of what's been stored, paginating through a group, or building a summary.
+
+**When to use:** When the user asks "what do you know about me?", when reviewing a specific group, or when you need to find a memory whose URI you don't have. Count-based browsing, not a substitute for `search_memory` when you have a specific query.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `group` | string | No | Filter to a specific group. Omit for all memories. |
+| `sort` | string | No | `date_desc` (default), `date_asc`, or `name_asc` |
+| `limit` | integer | No | Results per page. 1–50, default 20. |
+| `cursor` | string | No | Pagination cursor from previous response's `next_cursor` |
+| `context` | string | No | Why you're listing — appears in History |
+
+### Returns
+
+```json
+{
+  "items": [
+    {
+      "uri": "pressocampus://yoursite.com/memory/abc12345",
+      "name": "Prefers TypeScript over JavaScript",
+      "group": "technical",
+      "created_at": "2025-03-10T09:00:00Z",
+      "updated_at": "2025-03-15T14:22:00Z",
+      "priority": "important",
+      "confidence": "high",
+      "excerpt": "Strongly prefers TypeScript over JavaScript for all projects."
+    }
+  ],
+  "count": 1,
+  "page": 1,
+  "next_cursor": "eyJwYWdlIjoyfQ=="
+}
+```
+
+To fetch the next page, pass `next_cursor` as the `cursor` parameter. When there is no `next_cursor` in the response, you've reached the last page.
+
+### Notes
+
+- The soul and index are never included in results
+- Items are scoped to the current authenticated user
+- This is a **read** operation (counts against the 60/min read limit)
+
+### Example
+
+```
+User: "What do you know about my technical preferences?"
+AI: [calls list_memories]
+  group: "technical"
+  sort: "date_desc"
+  limit: 20
+AI: "I have 7 memories in your technical group: TypeScript preference,
+    Postgres for all projects, prefers dark mode, ..."
+```
+
+---
+
+## `tag_memory`
+
+Change a memory's group or priority — useful for reorganizing your memory store or correcting how a memory was originally categorized.
+
+**When to use:** When the user asks to move a memory to a different group, or to change its importance level. Also useful when the AI realizes a memory was filed under the wrong group on creation.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `uri` | string | Yes | The URI of the memory to retag |
+| `group` | string | No | New group. Provide at least one of `group` or `priority`. |
+| `priority` | string | No | `critical`, `important`, `normal`, or `low` |
+| `context` | string | No | Why you're changing this — appears in History |
+
+### Returns
+
+```json
+{
+  "uri": "pressocampus://yoursite.com/memory/abc12345",
+  "group": "work",
+  "priority": "important"
+}
+```
+
+Only the fields you changed are included in the response.
+
+### Errors
+
+| Code | Meaning |
+|------|---------|
+| `not_found` | No memory with that URI (or you don't own it) |
+| `protected_resource` | Attempted to retag the soul or index |
+| `nothing_to_update` | Neither `group` nor `priority` was provided |
+| `rate_limit_exceeded` | Too many write operations — slow down |
+
+### Example
+
+```
+User: "Actually, that memory about my Postgres preference should be in the
+       technical group, not projects."
+AI: [calls tag_memory]
+  uri: "pressocampus://yoursite.com/memory/xyz67890"
+  group: "technical"
+  context: "User requested reclassification from projects to technical"
 ```
 
 ---

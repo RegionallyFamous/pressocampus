@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.20] — 2026-03-20
+
+### Changed
+- **Documentation overhaul**: Rewrote `readme.txt` to be benefit-focused rather than technical; updated changelog to include all versions through 1.0.20.
+- **MCP Tools Reference**: Added `list_memories` and `tag_memory` documentation; updated tool count from 6 to 8.
+- **The Soul guide**: Updated soul snapshot size from 2 KB to 6 KB; added Session Briefing resource documentation.
+- **Connecting Your AI guide**: Removed stale "Starter Prompt" section (server-side onboarding replaced the manual prompt in v1.0.17).
+- **Admin Guide**: Removed stale "Starter Prompt" item from the Settings → Connect section.
+- **README.md**: Updated docs table to reference 8 tools; added `list_memories` and Session Briefing to feature highlights.
+
+---
+
 ## [1.0.19] — 2026-03-20
 
 ### Changed

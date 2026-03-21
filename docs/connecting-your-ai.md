@@ -48,11 +48,7 @@ The first time you send a message, Claude will ask you to authorize. Click the l
 
 ### Step 5 — First conversation
 
-Say something like:
-
-> "You now have access to my personal memory store. Please read my soul and introduce yourself based on what you've learned about me."
-
-Claude will read your soul, introduce itself in your preferred style, and be ready to start remembering.
+Start a new conversation. Claude will automatically read your soul from the connection handshake and introduce itself based on what it finds. If no soul exists yet, it will walk you through a brief interview to create one.
 
 ---
 
@@ -113,18 +109,6 @@ The first time any AI client connects, it goes through OAuth 2.1 with PKCE:
 4. **You're done** — subsequent connections are seamless.
 
 You can see all connected apps and revoke access at any time in `Pressocampus → Settings → Advanced → Connected Apps`.
-
----
-
-## The starter prompt
-
-After connecting, copy the starter prompt from `Settings → Connect` and paste it into your first conversation. It tells your AI to:
-
-1. Read your soul (or create one if it doesn't exist)
-2. Introduce itself based on what it learned
-3. Start building your memory store as you work
-
-You only need to do this once per AI client. After that, the AI reads your soul automatically on every `initialize` handshake.
 
 ---
 

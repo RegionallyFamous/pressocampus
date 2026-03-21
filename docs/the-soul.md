@@ -97,11 +97,30 @@ The AI always uses ETag-based concurrency checking, so if you have two clients c
 
 Every time an AI connects to Pressocampus, the connection handshake (`initialize`) includes:
 
-- `soul_snapshot` — the full Soul content (up to 2KB, truncated with `soul_truncated: true` if larger)
+- `soul_snapshot` — the full Soul content (up to 6 KB, truncated with `soul_truncated: true` if larger)
 - `soul_etag` — a fingerprint of the current Soul content
 - `soul_status` — `"complete"` or `"empty"`
 
 This means your AI has your Soul *before it sends its first message*. The context is there from the very first word.
+
+If your Soul exceeds 6 KB, the AI receives an automatic instruction to call `resources/read` on the Soul URI to fetch the full content before responding. You don't need to do anything — it handles this itself.
+
+---
+
+## Session Briefing
+
+Alongside the Soul, Pressocampus exposes a special **Session Briefing** resource at `pressocampus://yoursite.com/briefing`.
+
+The Session Briefing is a dynamically generated Markdown document your AI can read at the start of a session to understand the current state of your memory store. It includes:
+
+- A count of your memories, broken down by group
+- Your **critical memories** — the things marked as most important
+- **Recent activity** — memories added or updated in the last 7 days
+- **Memories that may need a review** — anything untouched for 6+ months
+
+Unlike the Soul (which describes *who you are*), the Session Briefing describes *what you know and what's changed recently*. It's designed to help your AI pick up where you left off without needing to scan your entire memory store.
+
+The briefing is generated fresh each time it's read — it always reflects your current memory state. It appears as a pinned resource in `resources/list`.
 
 ---
 
