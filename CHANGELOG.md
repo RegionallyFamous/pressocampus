@@ -7,6 +7,25 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.1] — 2026-03-19
+
+### Fixed
+
+- Corrected 50 inaccuracies across all documentation files — every claim is now verified against the actual source code:
+  - `admin-guide.md`: Brain endpoint URL, Claude Desktop config format (uses `npx mcp-remote`), soul states (`empty`/`complete`), Test Connection fires `ping` not `initialize`, History table rendering, CORS allowlist behavior, 512 KB default content size, export format (single JSON), import is WP-CLI only
+  - `connecting-your-ai.md`: Claude Desktop and Cursor config snippets
+  - `development.md`: Test file name and `PRESSOCAMPUS_DB_VERSION` constant name
+  - `mcp-tools-reference.md`: `remember` return shape, `forget` error code (`soul_protected`), rate limit error code (`rate_limit_exceeded`), ETag conflict code (`etag_conflict`), `search_memory` response shape (`{results, count}`)
+  - `memories.md`: MIME type is always `text/markdown`; `remember` has no `expires_at` parameter; export format
+  - `security.md`: RSA key is stored as plaintext PEM; CORS is allowlist-based; rate limits return tool errors, not HTTP 429
+  - `the-soul.md`: Starter template text; `soulStatus` value is `"complete"` not `"exists"`; soul cannot be deleted via WP-CLI either
+  - `troubleshooting.md`: CPT slug is `pressocampus_mem`
+  - `wp-cli-reference.md`: `list` output columns, `export` default filenames, `import` flag behavior, `audit` uses `--days`, `stats` actual output format, `migrate-domain` has no `--yes` flag
+- Updated plugin author to Regionally Famous
+- Added CI release workflow to attach plugin ZIP to GitHub releases
+
+---
+
 ## [1.0.0] — 2026-03-20
 
 Initial public release.
