@@ -289,6 +289,30 @@ parameters:
 			path: includes/class-mcp-endpoint.php
 
 		-
+			message: '#^Method Pressocampus\\MCPEndpoint\:\:tool_list_memories\(\) has parameter \$args with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: includes/class-mcp-endpoint.php
+
+		-
+			message: '#^Method Pressocampus\\MCPEndpoint\:\:tool_list_memories\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: includes/class-mcp-endpoint.php
+
+		-
+			message: '#^Method Pressocampus\\MCPEndpoint\:\:tool_tag_memory\(\) has parameter \$args with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: includes/class-mcp-endpoint.php
+
+		-
+			message: '#^Method Pressocampus\\MCPEndpoint\:\:tool_tag_memory\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: includes/class-mcp-endpoint.php
+
+		-
 			message: '#^Method Pressocampus\\MCPEndpoint\:\:tool_forget\(\) has parameter \$args with no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1

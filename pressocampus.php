@@ -45,7 +45,7 @@ define( 'PRESSOCAMPUS_SCOPE', 'pressocampus:memory' );
 
 // OAuth token TTLs — ISO 8601 duration strings.
 define( 'PRESSOCAMPUS_AUTH_CODE_TTL', 'PT10M' );    // 10 minutes
-define( 'PRESSOCAMPUS_ACCESS_TOKEN_TTL', 'PT1H' );  // 1 hour
+define( 'PRESSOCAMPUS_ACCESS_TOKEN_TTL', 'PT8H' );  // 8 hours
 define( 'PRESSOCAMPUS_REFRESH_TOKEN_TTL', 'P30D' ); // 30 days
 
 // ---------------------------------------------------------------------------

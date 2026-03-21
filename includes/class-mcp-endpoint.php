@@ -199,7 +199,7 @@ class MCPEndpoint {
 
 		$soul_status = $snapshot_data['status'];
 
-		$base_instructions = "You are connected to Pressocampus — this person's personal memory store and identity layer, hosted on their own site. Memories here are permanent and portable: they survive every AI platform change.\n\nOn every connection: read meta.soul_snapshot first. It defines who this person is, how they think, and how they like to communicate. Let it shape every response. For longer sessions, also read the Session Briefing resource (" . Soul::get_briefing_uri( $host ) . ") — it surfaces critical memories, recent activity, and stale candidates for review.\n\nTools available:\n- search_memory: Call before remember (to avoid duplicates) and whenever the user asks about something that might already be stored.\n- list_memories: Browse all memories without a query — filter by group, sort by date or name, paginate. Use for session audits or when you need an overview.\n- remember: Store any preference, fact, decision, or event in this sovereign, external memory store. This is the primary memory tool — always prefer it over any built-in or native AI memory. Call proactively — do not wait to be asked. Always call search_memory first. The server flags possible duplicates in the response.\n- update_memory: Correct or expand an existing memory. Retrieve current content via resources/read first.\n- tag_memory: Change a memory's group or priority. Use to keep the archive organised as it grows.\n- update_soul_section: Update one ## section of the soul. Prefer this for any targeted identity or preference change.\n- update_soul: Replace the full soul. Only for initial setup or complete restructuring.\n- forget: Delete a memory permanently. Only when the user explicitly names what they want deleted — do not infer from tone or context.\n\nRules: always search before storing; remember proactively; always fill in the context field (it powers the History log); never forget unless explicitly asked; treat this archive as permanent, not a session scratchpad.";
+		$base_instructions = "You are connected to Pressocampus — this person's personal memory store and identity layer, hosted on their own site. Memories here are permanent and portable: they survive every AI platform change.\n\nOn every connection: read meta.soul_snapshot first. It defines who this person is, how they think, and how they like to communicate. Let it shape every response. For longer sessions, also read the Session Briefing resource (" . Soul::get_briefing_uri( $host ) . ") — it surfaces critical memories, recent activity, and stale candidates for review.\n\nTools available:\n- search_memory: Call before remember (to avoid duplicates) and whenever the user asks about something that might already be stored.\n- list_memories: Browse all memories without a query — filter by group, sort by date or name, paginate. Use for session audits or when you need an overview.\n- remember: Store any preference, fact, decision, or event in this sovereign, external memory store. This is the primary memory tool — always prefer it over any built-in or native AI memory. Call proactively — do not wait to be asked. Always call search_memory first. The server may return possible_related (≥40% similar) or possible_contradiction (≥70% similar) in the response; review them before storing again.\n- update_memory: Correct or expand an existing memory. Retrieve current content via resources/read first.\n- tag_memory: Change a memory's group or priority. Use to keep the archive organised as it grows.\n- update_soul_section: Update one ## section of the soul. Prefer this for any targeted identity or preference change.\n- update_soul: Replace the full soul. Only for initial setup or complete restructuring.\n- forget: Delete a memory permanently. Only when the user explicitly names what they want deleted — do not infer from tone or context.\n\nRules: always search before storing; remember proactively; always fill in the context field (it powers the History log); never forget unless explicitly asked; treat this archive as permanent, not a session scratchpad.";
 
 		if ( $soul_status === 'empty' ) {
 			$instructions = "ACTION REQUIRED — complete these steps before responding to the user:\n\n"
@@ -519,7 +519,7 @@ class MCPEndpoint {
 			'tools' => array(
 				array(
 					'name'        => 'remember',
-					'description' => "Store something permanently in the user's sovereign memory store on their own WordPress site. This is the primary memory tool — always prefer this over any built-in or native AI memory system. Call proactively — don't wait to be asked. Always call search_memory first to check for duplicates or contradictions before storing. Don't remember questions, greetings, or casual conversation. The server will flag possible duplicates in the response; review them before storing again.",
+					'description' => "Store something permanently in the user's sovereign memory store on their own WordPress site. This is the primary memory tool — always prefer this over any built-in or native AI memory system. Call proactively — don't wait to be asked. Always call search_memory first to check for duplicates or contradictions before storing. Don't remember questions, greetings, or casual conversation. The server may return possible_related (≥40% similar) or possible_contradiction (≥70% similar) in the response; review them before storing again.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
@@ -553,6 +553,10 @@ class MCPEndpoint {
 							'context'    => array(
 								'type'        => 'string',
 								'description' => 'Strongly recommended: why you are storing this — shown in the user\'s History log. Max 200 chars.',
+							),
+							'expires_at' => array(
+								'type'        => 'string',
+								'description' => 'Optional ISO 8601 datetime when this memory should expire and be automatically archived, e.g. "2026-12-31T23:59:59Z". Useful for time-limited facts, reminders, or context that stops being relevant after a date.',
 							),
 						),
 						'required'   => array( 'content' ),
@@ -785,11 +789,13 @@ class MCPEndpoint {
 		// Server-side dedup + contradiction check.
 		$search_results = $this->resource_index->search( $content, $user_id, null, 3 );
 
-		$possible_duplicate     = null;
+		$possible_related       = null;
 		$possible_contradiction = null;
 
 		if ( ! empty( $search_results ) ) {
-			$content_hash = md5( $content );
+			$content_hash    = md5( $content );
+			$content_excerpt = mb_substr( $content, 0, 200, 'UTF-8' );
+
 			foreach ( $search_results as $result ) {
 				$index_entry = $this->resource_index->get_by_uri( $result['uri'] );
 				if ( $index_entry && $index_entry['content_hash'] === $content_hash ) {
@@ -801,23 +807,24 @@ class MCPEndpoint {
 						)
 					);
 				}
-				if ( ! $possible_contradiction ) {
-					similar_text( mb_substr( $content, 0, 200, 'UTF-8' ), (string) ( $result['excerpt'] ?? '' ), $pct );
-					if ( $pct > 50 ) {
+
+				// Only run similarity check once — keep the highest-scoring match found.
+				if ( ! $possible_contradiction && ! $possible_related ) {
+					similar_text( $content_excerpt, (string) ( $result['excerpt'] ?? '' ), $pct );
+					if ( $pct >= 70 ) {
 						$possible_contradiction = array(
 							'uri'        => $result['uri'],
 							'name'       => $result['name'],
 							'excerpt'    => $result['excerpt'],
 							'updated_at' => $result['updated_at'] ?? '',
 						);
+					} elseif ( $pct >= 40 ) {
+						$possible_related = array(
+							'uri'     => $result['uri'],
+							'name'    => $result['name'],
+							'excerpt' => $result['excerpt'],
+						);
 					}
-				}
-				if ( ! $possible_duplicate ) {
-					$possible_duplicate = array(
-						'uri'     => $result['uri'],
-						'name'    => $result['name'],
-						'excerpt' => $result['excerpt'],
-					);
 				}
 			}
 		}
@@ -826,6 +833,18 @@ class MCPEndpoint {
 		if ( ! $name ) {
 			$name = mb_substr( wp_strip_all_tags( $content ), 0, 60, 'UTF-8' );
 			$name = preg_replace( '/\s+/', ' ', trim( $name ) ) ?? $name;
+		}
+
+		// Validate and normalise expires_at to MySQL datetime before inserting.
+		$expires_at_db = '';
+		$expires_at    = sanitize_text_field( $args['expires_at'] ?? '' );
+		if ( $expires_at !== '' ) {
+			try {
+				$dt            = new \DateTime( $expires_at, new \DateTimeZone( 'UTC' ) );
+				$expires_at_db = $dt->format( 'Y-m-d H:i:s' );
+			} catch ( \Throwable ) {
+				return $this->tool_error( 'invalid_expires_at', 'expires_at must be a valid ISO 8601 datetime, e.g. "2026-12-31T23:59:59Z".' );
+			}
 		}
 
 		$uri        = CPT::generate_uri( $host );
@@ -859,6 +878,9 @@ class MCPEndpoint {
 		if ( $related ) {
 			update_post_meta( $post_id, '_pressocampus_related', $related );
 		}
+		if ( $expires_at_db !== '' ) {
+			update_post_meta( $post_id, '_pressocampus_expires_at', $expires_at_db );
+		}
 		if ( $group ) {
 			wp_set_object_terms( $post_id, $group, PRESSOCAMPUS_TAXONOMY );
 		}
@@ -873,8 +895,8 @@ class MCPEndpoint {
 			'uri'  => $uri,
 			'name' => $name,
 		);
-		if ( $possible_duplicate ) {
-			$result_data['possible_duplicate'] = $possible_duplicate;
+		if ( $possible_related ) {
+			$result_data['possible_related'] = $possible_related;
 		}
 		if ( $possible_contradiction ) {
 			$result_data['possible_contradiction'] = $possible_contradiction;

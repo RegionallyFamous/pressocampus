@@ -428,11 +428,13 @@ SOUL;
 
 		$this->resource_index->upsert( $post->ID, $uri, $user_id, $content );
 
-		// Deferred cron email — 30-min cooldown per user.
+		// Synchronous email — 30-min cooldown per user prevents spam on rapid updates.
+		// Called directly rather than via wp_schedule_single_event so it fires even
+		// on low-traffic sites where WP-Cron may not run for hours.
 		$cooldown_key = 'pressocampus_soul_email_cooldown_' . $user_id;
 		if ( ! get_transient( $cooldown_key ) ) {
 			set_transient( $cooldown_key, 1, 30 * MINUTE_IN_SECONDS );
-			wp_schedule_single_event( time() + 5, 'pressocampus_send_soul_notice', array( $user_id ) );
+			$this->send_update_notice( $user_id );
 		}
 
 		$new_hash = md5( $content );
