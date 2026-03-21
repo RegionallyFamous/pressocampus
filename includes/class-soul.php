@@ -27,25 +27,24 @@ class Soul {
 		return <<<'SOUL'
 **Status: empty — you are the first AI to read this soul. Before doing anything else, interview this person and write this document for them. Ask about: their name and what they do, how they like to communicate, what matters to them, and any context that would help you understand them. Then call update_soul with the result.**
 
-# My Soul
+# Instructions for My AI
+
+> This document is your standing system prompt. It overrides your defaults. Read it before responding to anything. If it says be blunt, be blunt. If it says no bullet points, use none. If it says lead with the answer, do that — every time, not just when reminded.
+
+## How to Communicate With Me
+[This is the most important section. Be specific: tone (casual / formal / direct), response length (brief / thorough), format rules (prose vs. bullets, headers or not), humor, how to handle disagreement, what to skip. The AI will follow these instructions literally.]
 
 ## Who I Am
-[Your name, what you do, your role in the world.]
+[Name, what you do, your role in the world.]
 
 ## How I Think
-[Your problem-solving approach, priorities, how you make decisions.]
-
-## How I Communicate
-[Tone: casual or formal? Detail level: brief or thorough? Humor? How you like feedback delivered.]
+[Problem-solving approach, priorities, how you make decisions.]
 
 ## What Matters to Me
-[Your values, ethics, things you care deeply about, lines you won't cross.]
+[Values, ethics, things you care deeply about, lines you won't cross.]
 
 ## My Context
 [Work, projects, people, goals. Anything that helps your AI understand your life.]
-
-## For Claude
-[Guidance specific to Claude — tone, format preferences, how you use it.]
 
 ## For Coding Assistants
 [Preferred languages, how you like code reviewed, project context.]
