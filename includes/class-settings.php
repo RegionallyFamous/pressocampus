@@ -625,11 +625,11 @@ CSS;
 				</p>
 
 				<div id="pc-diag-results" style="display:none">
-					<table class="wp-list-table widefat fixed striped" id="pc-diag-table">
+					<table class="wp-list-table widefat striped" id="pc-diag-table" style="table-layout:auto">
 						<thead>
 							<tr>
-								<th style="width:40px"><?php esc_html_e( 'Status', 'pressocampus' ); ?></th>
-								<th><?php esc_html_e( 'Check', 'pressocampus' ); ?></th>
+								<th style="width:60px;white-space:nowrap;text-align:center"><?php esc_html_e( 'Status', 'pressocampus' ); ?></th>
+								<th style="width:220px"><?php esc_html_e( 'Check', 'pressocampus' ); ?></th>
 								<th><?php esc_html_e( 'Detail', 'pressocampus' ); ?></th>
 							</tr>
 						</thead>
