@@ -29,6 +29,7 @@ class Settings {
 		add_action( 'wp_ajax_pressocampus_export_csv', array( $this, 'ajax_export_csv' ) );
 		add_action( 'wp_ajax_pressocampus_save_settings', array( $this, 'ajax_save_settings' ) );
 		add_action( 'wp_ajax_pressocampus_dismiss_notice', array( $this, 'ajax_dismiss_notice' ) );
+		add_action( 'wp_ajax_pressocampus_run_diagnostics', array( $this, 'ajax_run_diagnostics' ) );
 	}
 
 	public function enqueue_scripts( string $hook ): void {
@@ -221,6 +222,7 @@ CSS;
 			<nav class="nav-tab-wrapper" aria-label="<?php esc_attr_e( 'Pressocampus settings tabs', 'pressocampus' ); ?>">
 				<a href="#" class="nav-tab <?php echo $active_tab === 'connect' ? 'nav-tab-active' : ''; ?>" data-tab="connect"><?php esc_html_e( 'Connect', 'pressocampus' ); ?></a>
 				<a href="#" class="nav-tab <?php echo $active_tab === 'advanced' ? 'nav-tab-active' : ''; ?>" data-tab="advanced"><?php esc_html_e( 'Advanced', 'pressocampus' ); ?></a>
+				<a href="#" class="nav-tab <?php echo $active_tab === 'diagnostics' ? 'nav-tab-active' : ''; ?>" data-tab="diagnostics"><?php esc_html_e( 'Diagnostics', 'pressocampus' ); ?></a>
 			</nav>
 
 			<!-- ===== CONNECT TAB ===== -->
@@ -452,6 +454,89 @@ CSS;
 				</p>
 
 			</div><!-- /advanced tab -->
+
+			<!-- ===== DIAGNOSTICS TAB ===== -->
+			<div id="pc-tab-diagnostics" class="pc-tab-panel <?php echo $active_tab === 'diagnostics' ? 'active' : ''; ?>">
+				<h2><?php esc_html_e( 'Connection Diagnostics', 'pressocampus' ); ?></h2>
+				<p><?php esc_html_e( 'Run a full end-to-end check of every component Claude needs to connect. Share the results if you need help debugging.', 'pressocampus' ); ?></p>
+
+				<p>
+					<button id="pc-run-diag" class="button button-primary" onclick="pcRunDiagnostics()"><?php esc_html_e( 'Run Diagnostics', 'pressocampus' ); ?></button>
+					<button id="pc-copy-diag" class="button" style="display:none" onclick="pcCopyDiagnostics()"><?php esc_html_e( 'Copy Report', 'pressocampus' ); ?></button>
+				</p>
+
+				<div id="pc-diag-results" style="display:none">
+					<table class="wp-list-table widefat fixed striped" id="pc-diag-table">
+						<thead>
+							<tr>
+								<th style="width:40px"><?php esc_html_e( 'Status', 'pressocampus' ); ?></th>
+								<th><?php esc_html_e( 'Check', 'pressocampus' ); ?></th>
+								<th><?php esc_html_e( 'Detail', 'pressocampus' ); ?></th>
+							</tr>
+						</thead>
+						<tbody id="pc-diag-tbody"></tbody>
+					</table>
+				</div>
+
+				<script>
+				function pcRunDiagnostics() {
+					const btn = document.getElementById('pc-run-diag');
+					const results = document.getElementById('pc-diag-results');
+					const tbody = document.getElementById('pc-diag-tbody');
+					const copyBtn = document.getElementById('pc-copy-diag');
+					btn.disabled = true;
+					btn.textContent = '<?php echo esc_js( __( 'Running…', 'pressocampus' ) ); ?>';
+					results.style.display = 'none';
+					tbody.innerHTML = '';
+					copyBtn.style.display = 'none';
+					fetch(ajaxurl, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+						body: 'action=pressocampus_run_diagnostics&_wpnonce=<?php echo esc_js( wp_create_nonce( 'pressocampus_diagnostics' ) ); ?>'
+					})
+					.then(r => r.json())
+					.then(data => {
+						btn.disabled = false;
+						btn.textContent = '<?php echo esc_js( __( 'Run Diagnostics', 'pressocampus' ) ); ?>';
+						if (!data.success) {
+							tbody.innerHTML = '<tr><td colspan="3">' + (data.data || 'Error') + '</td></tr>';
+							results.style.display = 'block';
+							return;
+						}
+						data.data.checks.forEach(c => {
+							const icon = c.pass ? '✅' : (c.warn ? '⚠️' : '❌');
+							const row = `<tr><td style="text-align:center;font-size:18px">${icon}</td><td><strong>${c.label}</strong></td><td style="font-family:monospace;word-break:break-all">${c.detail}</td></tr>`;
+							tbody.insertAdjacentHTML('beforeend', row);
+						});
+						results.style.display = 'block';
+						copyBtn.style.display = 'inline-block';
+					})
+					.catch(e => {
+						btn.disabled = false;
+						btn.textContent = '<?php echo esc_js( __( 'Run Diagnostics', 'pressocampus' ) ); ?>';
+						tbody.innerHTML = '<tr><td colspan="3">Request failed: ' + e.message + '</td></tr>';
+						results.style.display = 'block';
+					});
+				}
+
+				function pcCopyDiagnostics() {
+					const rows = document.querySelectorAll('#pc-diag-tbody tr');
+					let text = 'Pressocampus Diagnostics\n========================\n';
+					rows.forEach(r => {
+						const cells = r.querySelectorAll('td');
+						if (cells.length === 3) {
+							text += cells[0].textContent.trim() + ' ' + cells[1].textContent.trim() + ': ' + cells[2].textContent.trim() + '\n';
+						}
+					});
+					navigator.clipboard.writeText(text).then(() => {
+						const btn = document.getElementById('pc-copy-diag');
+						const orig = btn.textContent;
+						btn.textContent = '<?php echo esc_js( __( 'Copied!', 'pressocampus' ) ); ?>';
+						setTimeout(() => { btn.textContent = orig; }, 2000);
+					});
+				}
+				</script>
+			</div><!-- /diagnostics tab -->
 
 		</div><!-- /wrap -->
 
@@ -928,6 +1013,249 @@ CSS;
 		delete_option( $option_name );
 		wp_send_json_success();
 	}
+
+	// phpcs:disable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents -- loopback HTTP; file_get_contents not applicable
+
+	public function ajax_run_diagnostics(): void {
+		check_ajax_referer( 'pressocampus_diagnostics' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( 'Permission denied.' );
+		}
+
+		global $wpdb;
+		$checks = array();
+
+		// 1. PHP version
+		$php_ok   = version_compare( PHP_VERSION, '8.3', '>=' );
+		$checks[] = array(
+			'label'  => 'PHP version',
+			'pass'   => $php_ok,
+			'detail' => PHP_VERSION . ( $php_ok ? '' : ' — 8.3+ required' ),
+		);
+
+		// 2. OpenSSL extension
+		$ssl_ok   = extension_loaded( 'openssl' );
+		$checks[] = array(
+			'label'  => 'PHP OpenSSL extension',
+			'pass'   => $ssl_ok,
+			'detail' => $ssl_ok ? 'Loaded' : 'MISSING — required for JWT signing',
+		);
+
+		// 3. DB tables
+		$tables  = array(
+			$wpdb->prefix . 'pressocampus_oauth_clients',
+			$wpdb->prefix . 'pressocampus_oauth_tokens',
+			$wpdb->prefix . 'pressocampus_resource_index',
+			$wpdb->prefix . 'pressocampus_audit_log',
+		);
+		$missing = array();
+		foreach ( $tables as $table ) {
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			if ( $wpdb->get_var( "SHOW TABLES LIKE '$table'" ) !== $table ) {
+				$missing[] = $table;
+			}
+		}
+		$tables_ok = empty( $missing );
+		$checks[]  = array(
+			'label'  => 'Database tables',
+			'pass'   => $tables_ok,
+			'detail' => $tables_ok ? 'All 4 tables present' : 'Missing: ' . implode( ', ', $missing ),
+		);
+
+		// 4. DB schema version
+		$db_ver    = (string) get_option( 'pressocampus_db_version', '0' );
+		$schema_ok = $db_ver === PRESSOCAMPUS_DB_VERSION;
+		$checks[]  = array(
+			'label'  => 'DB schema version',
+			'pass'   => $schema_ok,
+			'warn'   => ! $schema_ok,
+			'detail' => 'Stored: ' . $db_ver . '  Expected: ' . PRESSOCAMPUS_DB_VERSION,
+		);
+
+		// 5. RSA key pair
+		$has_priv = get_option( 'pressocampus_rsa_private_key' ) !== false && get_option( 'pressocampus_rsa_private_key' ) !== '';
+		$has_pub  = get_option( 'pressocampus_rsa_public_key' ) !== false && get_option( 'pressocampus_rsa_public_key' ) !== '';
+		$rsa_ok   = $has_priv && $has_pub;
+		$checks[] = array(
+			'label'  => 'RSA key pair',
+			'pass'   => $rsa_ok,
+			'detail' => $rsa_ok ? 'Present' : ( ! $has_priv ? 'Private key missing' : 'Public key missing' ),
+		);
+
+		// 6. Rewrite rule compiled
+		$rules    = (array) get_option( 'rewrite_rules', array() );
+		$rule_ok  = isset( $rules['^brain/?$'] );
+		$checks[] = array(
+			'label'  => '/brain rewrite rule',
+			'pass'   => $rule_ok,
+			'detail' => $rule_ok ? 'Compiled in WordPress rewrite table' : 'NOT found — go to Settings → Permalinks and save once to rebuild',
+		);
+
+		// 7. Well-known: oauth-authorization-server (loopback GET)
+		$as_url  = home_url( '/.well-known/oauth-authorization-server' );
+		$as_resp = wp_remote_get(
+			$as_url,
+			array(
+				'timeout'   => 8,
+				'sslverify' => false,
+			)
+		);
+		if ( is_wp_error( $as_resp ) ) {
+			$checks[] = array(
+				'label'  => '/.well-known/oauth-authorization-server',
+				'pass'   => false,
+				'detail' => 'HTTP error: ' . $as_resp->get_error_message(),
+			);
+		} else {
+			$as_code  = wp_remote_retrieve_response_code( $as_resp );
+			$as_body  = wp_remote_retrieve_body( $as_resp );
+			$as_json  = json_decode( $as_body, true );
+			$as_ok    = $as_code === 200 && is_array( $as_json ) && isset( $as_json['authorization_endpoint'] );
+			$checks[] = array(
+				'label'  => '/.well-known/oauth-authorization-server',
+				'pass'   => $as_ok,
+				'detail' => $as_ok
+					? 'HTTP 200 · authorization_endpoint: ' . ( $as_json['authorization_endpoint'] ?? '' )
+					: 'HTTP ' . $as_code . ' · ' . wp_strip_all_tags( substr( $as_body, 0, 120 ) ),
+			);
+		}
+
+		// 8. Well-known: oauth-protected-resource (loopback GET)
+		$pr_url  = home_url( '/.well-known/oauth-protected-resource' );
+		$pr_resp = wp_remote_get(
+			$pr_url,
+			array(
+				'timeout'   => 8,
+				'sslverify' => false,
+			)
+		);
+		if ( is_wp_error( $pr_resp ) ) {
+			$checks[] = array(
+				'label'  => '/.well-known/oauth-protected-resource',
+				'pass'   => false,
+				'detail' => 'HTTP error: ' . $pr_resp->get_error_message(),
+			);
+		} else {
+			$pr_code  = wp_remote_retrieve_response_code( $pr_resp );
+			$pr_body  = wp_remote_retrieve_body( $pr_resp );
+			$pr_json  = json_decode( $pr_body, true );
+			$pr_ok    = $pr_code === 200 && is_array( $pr_json ) && isset( $pr_json['resource'] );
+			$checks[] = array(
+				'label'  => '/.well-known/oauth-protected-resource',
+				'pass'   => $pr_ok,
+				'detail' => $pr_ok
+					? 'HTTP 200 · resource: ' . ( $pr_json['resource'] ?? '' )
+					: 'HTTP ' . $pr_code . ' · ' . wp_strip_all_tags( substr( $pr_body, 0, 120 ) ),
+			);
+		}
+
+		// 9. MCP endpoint reachable (loopback POST — should return 401 + WWW-Authenticate)
+		$mcp_url  = home_url( '/brain' );
+		$mcp_resp = wp_remote_post(
+			$mcp_url,
+			array(
+				'timeout'   => 8,
+				'sslverify' => false,
+				'body'      => wp_json_encode(
+					array(
+						'jsonrpc' => '2.0',
+						'method'  => 'initialize',
+						'id'      => 1,
+					)
+				),
+				'headers'   => array( 'Content-Type' => 'application/json' ),
+			)
+		);
+		if ( is_wp_error( $mcp_resp ) ) {
+			$checks[] = array(
+				'label'  => 'MCP endpoint (/brain)',
+				'pass'   => false,
+				'detail' => 'HTTP error: ' . $mcp_resp->get_error_message(),
+			);
+		} else {
+			$mcp_code     = wp_remote_retrieve_response_code( $mcp_resp );
+			$www_auth     = wp_remote_retrieve_header( $mcp_resp, 'www-authenticate' );
+			$mcp_ok       = $mcp_code === 401 && str_contains( $www_auth, 'Bearer' );
+			$has_res_meta = str_contains( $www_auth, 'resource_metadata' );
+			$detail       = 'HTTP ' . $mcp_code;
+			if ( $www_auth ) {
+				$detail .= ' · WWW-Authenticate: ' . $www_auth;
+			} else {
+				$detail .= ' · No WWW-Authenticate header';
+			}
+			if ( $mcp_code === 200 ) {
+				$detail .= ' — endpoint is responding without auth challenge (unexpected)';
+			}
+			$checks[] = array(
+				'label'  => 'MCP endpoint (/brain) — unauthenticated',
+				'pass'   => $mcp_ok,
+				'warn'   => $mcp_ok && ! $has_res_meta,
+				'detail' => $detail,
+			);
+		}
+
+		// 10. DCR endpoint reachable (HEAD — no actual registration)
+		$reg_url  = rest_url( 'pressocampus/v1/oauth/register' );
+		$reg_resp = wp_remote_head(
+			$reg_url,
+			array(
+				'timeout'   => 8,
+				'sslverify' => false,
+			)
+		);
+		if ( is_wp_error( $reg_resp ) ) {
+			$checks[] = array(
+				'label'  => 'OAuth register endpoint',
+				'pass'   => false,
+				'detail' => 'HTTP error: ' . $reg_resp->get_error_message(),
+			);
+		} else {
+			$reg_code = wp_remote_retrieve_response_code( $reg_resp );
+			// HEAD on a POST-only route returns 405 (Method Not Allowed) — that's fine.
+			$reg_ok   = in_array( $reg_code, array( 200, 201, 405 ), true );
+			$checks[] = array(
+				'label'  => 'OAuth register endpoint',
+				'pass'   => $reg_ok,
+				'detail' => 'HTTP ' . $reg_code . ( $reg_ok ? ' (reachable)' : ' — may be blocked by security plugin' ),
+			);
+		}
+
+		// 11. Token endpoint reachable
+		$tok_url  = rest_url( 'pressocampus/v1/oauth/token' );
+		$tok_resp = wp_remote_head(
+			$tok_url,
+			array(
+				'timeout'   => 8,
+				'sslverify' => false,
+			)
+		);
+		if ( is_wp_error( $tok_resp ) ) {
+			$checks[] = array(
+				'label'  => 'OAuth token endpoint',
+				'pass'   => false,
+				'detail' => 'HTTP error: ' . $tok_resp->get_error_message(),
+			);
+		} else {
+			$tok_code = wp_remote_retrieve_response_code( $tok_resp );
+			$tok_ok   = in_array( $tok_code, array( 200, 201, 405 ), true );
+			$checks[] = array(
+				'label'  => 'OAuth token endpoint',
+				'pass'   => $tok_ok,
+				'detail' => 'HTTP ' . $tok_code . ( $tok_ok ? ' (reachable)' : ' — may be blocked by security plugin' ),
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'checks'  => $checks,
+				'version' => PRESSOCAMPUS_VERSION,
+				'site'    => home_url(),
+			)
+		);
+	}
+
+	// phpcs:enable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 
 	// Helpers
 

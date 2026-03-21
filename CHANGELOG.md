@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.10] — 2026-03-21
+
+### Added
+
+- **Diagnostics tab** in the Pressocampus settings page. Click "Run Diagnostics" to perform a full end-to-end health check: PHP version, OpenSSL extension, all four database tables, RSA key pair, `/brain` rewrite rule, `/.well-known/oauth-authorization-server`, `/.well-known/oauth-protected-resource`, the MCP endpoint (401 + `WWW-Authenticate`), and both OAuth endpoints. Results show pass/warn/fail for each step with detailed output. A "Copy Report" button formats everything as plain text to share when asking for support.
+
+---
+
 ## [1.0.9] — 2026-03-21
 
 ### Fixed
