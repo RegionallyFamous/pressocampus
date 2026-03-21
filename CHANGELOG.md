@@ -7,6 +7,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.1] — 2026-03-21
+
+### Fixed
+
+- **Self-healing `/brain` rewrite** — the plugin now checks `$wp_rewrite->rules` directly on every request and auto-flushes if the `/brain` rule is missing from the compiled table. This catches caching-plugin clears, Permalink saves that ran before the plugin loaded, and any other scenario where the rule silently disappeared.
+- **Block direct `/wp-json/` access to MCP endpoint** — the REST route now returns 404 for any request not arriving through the `/brain` pretty URL. The REST registration is internal plumbing for the rewrite; it is no longer a public fallback path.
+
+---
+
 ## [1.1.0] — 2026-03-21
 
 ### Fixed

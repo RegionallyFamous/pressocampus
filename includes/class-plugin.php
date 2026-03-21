@@ -140,12 +140,20 @@ class Plugin {
 		}
 
 		// Post-activation flush flag set by Installer::activate().
-		// Using a transient instead of calling flush_rewrite_rules() directly
-		// in the activation hook guarantees the /brain rule is already registered
-		// when the flush compiles the rewrite table.
 		if ( get_transient( 'pressocampus_needs_flush' ) ) {
 			delete_transient( 'pressocampus_needs_flush' );
 			$needs_flush = true;
+		}
+
+		// Self-healing: if the /brain rule is absent from the compiled rewrite
+		// table (e.g. after a file-copy update, a caching plugin cleared rules,
+		// or a Permalinks save that ran before the plugin was loaded), flush now.
+		if ( ! $needs_flush ) {
+			global $wp_rewrite;
+			$rules = $wp_rewrite->rules ?? array();
+			if ( ! isset( $rules['^brain/?$'] ) ) {
+				$needs_flush = true;
+			}
 		}
 
 		if ( $needs_flush ) {

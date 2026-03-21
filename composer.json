@@ -1,7 +1,7 @@
 {
     "name": "pressocampus/pressocampus",
     "description": "Give your AI a permanent memory — stored on your WordPress site, not locked inside any app.",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "require": {

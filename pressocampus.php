@@ -3,7 +3,7 @@
  * Plugin Name:       Pressocampus
  * Plugin URI:        https://github.com/RegionallyFamous/pressocampus
  * Description:       Give your AI a permanent memory — stored on your WordPress site, not locked inside any app.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Requires at least: 6.4
  * Tested up to:      6.9
  * Requires PHP:      8.3
@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Constants
 // ---------------------------------------------------------------------------
 
-define( 'PRESSOCAMPUS_VERSION', '1.1.0' );
+define( 'PRESSOCAMPUS_VERSION', '1.1.1' );
 define( 'PRESSOCAMPUS_DB_VERSION', '1.2' );
 define( 'PRESSOCAMPUS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PRESSOCAMPUS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

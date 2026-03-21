@@ -76,6 +76,17 @@ class MCPEndpoint {
 			return new \WP_REST_Response( null, 403 );
 		}
 
+		// Only serve requests that arrive via the /brain pretty URL.
+		// Direct /wp-json/pressocampus/v1/mcp access is intentionally blocked —
+		// the REST route exists solely to back the rewrite; it is not a public
+		// fallback endpoint.
+		$brain_path   = (string) wp_parse_url( home_url( '/brain' ), PHP_URL_PATH );
+		$request_uri  = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+		$request_path = (string) strtok( $request_uri, '?' );
+		if ( ! str_starts_with( $request_path, $brain_path ) ) {
+			return new \WP_REST_Response( null, 404 );
+		}
+
 		// Validate MCP-Protocol-Version header on post-initialize requests.
 		// The spec requires 400 for unsupported/invalid values.
 		$client_version = $request->get_header( 'MCP-Protocol-Version' );
