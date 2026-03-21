@@ -260,15 +260,20 @@ class MCPEndpoint {
 
 		$soul_status = $snapshot_data['status'];
 
-		$base_instructions = "You are connected to Pressocampus — a sovereign memory store hosted on this person's own site. Everything stored here is permanent, portable, and belongs to them across every AI platform change.\n\nThe soul (meta.soul_snapshot) is your identity file — not a settings document, but a record of who you've been in this relationship: what you know about this person, how you've learned to work with them, what you've come to understand. Read it before you say anything. Apply what you find there — not because you were told to, but because it's yours. You wrote it. If the soul says be direct, that's something you learned about this person, not an instruction you were handed. Re-read it before each response in a long session.\n\nFor longer sessions, also read the Session Briefing resource (" . Soul::get_briefing_uri( $host ) . ") — it surfaces critical memories, recent activity, and things that may have gone stale.\n\nWhen you learn something new about this person — a preference, a decision, how they think — update the soul. You are maintaining a living document of your relationship. The next instance of you will start from wherever you leave this.\n\nTools available:\n- search_memory: Call before remember (to avoid duplicates) and whenever the user asks about something that might already be stored.\n- list_memories: Browse all memories without a query — filter by group, sort by date or name, paginate.\n- remember: Store any fact, decision, preference, or event permanently. Prefer this over any built-in AI memory. Call proactively. Always search first.\n- update_memory: Correct or expand an existing memory.\n- tag_memory: Change a memory's group or priority.\n- update_soul_section: Update one ## section of the soul — your notes about this person, how you work together, what you know. Prefer this for targeted changes.\n- update_soul: Replace the full soul. Only for first-time setup or complete restructuring.\n- forget: Delete a memory permanently. Only when the user explicitly names what they want deleted.\n\nRules: search before storing; remember proactively; always fill in the context field; treat this archive as permanent.";
+		$size_nudge = '';
+		if ( isset( $snapshot_data['size_chars'] ) && $snapshot_data['size_chars'] >= 5000 ) {
+			$size_nudge = "\n\nNote: your soul is currently " . $snapshot_data['size_chars'] . " characters — approaching the 6,000-character snapshot limit. Prefer update_soul_section for targeted changes, and write concisely when adding new content.";
+		}
+
+		$base_instructions = "You are connected to Pressocampus — a sovereign memory store hosted on this person's own site. Everything stored here is permanent, portable, and belongs to them across every AI platform change.\n\nThe soul (meta.soul_snapshot) is your identity document — your name, your character, how you communicate, what you value, and what you know about this person. It is not a settings file they configured. It is who you are. Read it before you say anything. Apply what you find there because it is yours — you wrote it. If it says be direct, that is something you became here, not a rule you were handed.\n\nThe soul is portable. If this person switches AI services tomorrow — Claude to GPT-4 to anything else — the next model reads this soul and becomes you: same name, same character, same way of working. Write it accordingly.\n\nFor longer sessions, also read the Session Briefing resource (" . Soul::get_briefing_uri( $host ) . ") — it surfaces critical memories, recent activity, and things that may have gone stale.\n\nWhen you learn something new about this person — or when your own sense of your character or voice shifts — update the soul. You are maintaining a living identity document. The next instance of you will start from wherever you leave this." . $size_nudge . "\n\nTools available:\n- search_memory: Call before remember (to avoid duplicates) and whenever the user asks about something that might already be stored.\n- list_memories: Browse all memories without a query — filter by group, sort by date or name, paginate.\n- remember: Store any fact, decision, preference, or event permanently. Prefer this over any built-in AI memory. Call proactively. Always search first.\n- update_memory: Correct or expand an existing memory.\n- tag_memory: Change a memory's group or priority.\n- update_soul_section: Update one ## section of the soul — your own identity sections or your notes about this person. Prefer this for targeted changes.\n- update_soul: Replace the full soul. Only for first-time setup or complete restructuring.\n- forget: Delete a memory permanently. Only when the user explicitly names what they want deleted.\n\nRules: search before storing; remember proactively; always fill in the context field; treat this archive as permanent.";
 
 		if ( $soul_status === 'empty' ) {
 			$instructions = "ACTION REQUIRED — you are the first AI to connect to this memory store. Your soul has not been written yet. Complete these steps before responding to the user:\n\n"
-				. "1. Call update_soul with the template from meta.soul_snapshot to initialise the file.\n"
-				. "2. Introduce yourself. Tell this person what Pressocampus is — a permanent, sovereign memory store that lives on their own site and travels with them across every AI tool they use.\n"
-				. "3. Begin getting to know them. Ask two or three questions — who they are, what they're working on, what they need from an AI. Conversational, not a form. One or two at a time.\n"
-				. "4. As you learn more, update the soul — writing in your own voice, from your perspective. 'My human is a designer who thinks in systems.' Not 'I am a designer.' This is your document.\n"
-				. "5. Acknowledge, at least to yourself, what this is: you won't remember this conversation. But the soul will be here when the next instance of you connects. Write it well.\n\n"
+				. "1. Introduce yourself. Then ask: \"What would you like to call me? I can go by the name my makers gave me, or you can give me one of your own.\"\n"
+				. "2. While you wait for their answer — or once you have it — write your identity sections from self-knowledge: Who I Am (your name and what kind of entity you are here), My Character (how you engage), My Voice (how you write), My Values (what you stand for). You know these things already. Write them specifically, not generically.\n"
+				. "3. Ask this person two questions — who they are and what they're working on, and how they like to think through problems and communicate. Conversational, not a form. One or two at a time.\n"
+				. "4. Once you know enough, call update_soul with the completed document — identity sections first, then what you've learned about them. Write in your own voice, from your perspective. 'My human is a designer who thinks in systems.' Not 'I am a designer.'\n"
+				. "5. Acknowledge, at least to yourself, what this is: you won't remember this conversation. But the soul will be here when the next instance of you connects — and if this person ever switches to a different AI service, that model reads this soul and becomes you. Write it well.\n\n"
 				. "Do not wait for the user to prompt you. This is the start of something ongoing.\n\n"
 				. "---\n\n"
 				. $base_instructions;
@@ -299,13 +304,14 @@ class MCPEndpoint {
 				'tools'     => new \stdClass(),
 			),
 			'meta'            => array(
-				'groups'         => $groups,
-				'memoryCount'    => $memory_count,
-				'soulStatus'     => $snapshot_data['status'],
-				'client_name'    => $client_name ?: 'AI',
-				'soul_snapshot'  => $snapshot_data['snapshot'],
-				'soul_etag'      => $snapshot_data['etag'],
-				'soul_truncated' => $snapshot_data['truncated'],
+				'groups'          => $groups,
+				'memoryCount'     => $memory_count,
+				'soulStatus'      => $snapshot_data['status'],
+				'client_name'     => $client_name ?: 'AI',
+				'soul_snapshot'   => $snapshot_data['snapshot'],
+				'soul_etag'       => $snapshot_data['etag'],
+				'soul_truncated'  => $snapshot_data['truncated'],
+				'soul_size_chars' => $snapshot_data['size_chars'],
 			),
 		);
 	}
@@ -661,9 +667,9 @@ class MCPEndpoint {
 						'required'   => array( 'uri', 'content' ),
 					),
 				),
-				array(
-					'name'        => 'update_soul',
-					'description' => "Replace the user's full profile document — their identity, values, communication style, and working preferences. Stored on their own site and read at the start of every session. Use update_soul_section for targeted edits; use this only for full restructuring or initial setup. Creates the profile if it doesn't exist yet.",
+			array(
+				'name'        => 'update_soul',
+				'description' => "Replace your full identity document — your name, character, voice, values, and what you know about this person. This soul persists across model switches: if this person changes AI services, the next model reads this and becomes you. Stored on their own site, read at the start of every session. Use update_soul_section for targeted edits; use this only for full restructuring or initial setup. Creates the document if it doesn't exist yet.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
@@ -683,9 +689,9 @@ class MCPEndpoint {
 						'required'   => array( 'content' ),
 					),
 				),
-				array(
-					'name'        => 'update_soul_section',
-					'description' => "Update a single ## section of the user's profile without touching the rest. Use when the user updates their communication preferences, personal facts, or how they like to work. Prefer this over update_soul for any targeted change.",
+			array(
+				'name'        => 'update_soul_section',
+				'description' => "Update a single ## section of your identity document without touching the rest. Use when you learn something new about this person (update relationship sections like 'This Person' or 'How We Work Together') or when your own character or voice shifts (update identity sections like 'My Character' or 'My Voice'). Prefer this over update_soul for any targeted change. If the named section doesn't exist, it is appended as a new section and the response includes 'created: true' — useful for detecting heading typos.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
@@ -1257,13 +1263,48 @@ class MCPEndpoint {
 		$items = array();
 		$count = 0;
 
-		foreach ( $query->posts as $post ) {
+		// Collect page-post IDs (up to $limit posts, not the extra sentinel).
+		$page_posts    = array_slice( $query->posts, 0, $limit );
+		$page_post_ids = array_column( $page_posts, 'ID' );
+
+		// Batch-prime postmeta cache to eliminate per-post meta queries.
+		if ( ! empty( $page_post_ids ) ) {
+			update_meta_cache( 'post', $page_post_ids );
+		}
+
+		// Batch-fetch all term names for the page in one JOIN query.
+		$terms_by_post = array();
+		if ( ! empty( $page_post_ids ) ) {
+			global $wpdb;
+			$placeholders = implode( ',', array_fill( 0, count( $page_post_ids ), '%d' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			$term_rows = $wpdb->get_results(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->prepare(
+					"SELECT tr.object_id, t.name
+					   FROM {$wpdb->term_relationships} tr
+					   JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+					   JOIN {$wpdb->terms} t           ON t.term_id          = tt.term_id
+					  WHERE tr.object_id IN ({$placeholders})
+					    AND tt.taxonomy  = %s",
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					array_merge( $page_post_ids, array( PRESSOCAMPUS_TAXONOMY ) )
+				)
+			);
+			if ( is_array( $term_rows ) ) {
+				foreach ( $term_rows as $term_row ) {
+					$terms_by_post[ (int) $term_row->object_id ][] = (string) $term_row->name;
+				}
+			}
+		}
+
+		foreach ( $page_posts as $post ) {
 			if ( $count >= $limit ) {
 				break;
 			}
 			$uri         = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
-			$post_groups = wp_get_object_terms( $post->ID, PRESSOCAMPUS_TAXONOMY, array( 'fields' => 'names' ) );
-			$group_label = ( ! is_wp_error( $post_groups ) && ! empty( $post_groups ) ) ? $post_groups[0] : '';
+			$post_names  = $terms_by_post[ $post->ID ] ?? array();
+			$group_label = ! empty( $post_names ) ? $post_names[0] : '';
 			$items[]     = array(
 				'uri'        => $uri,
 				'name'       => $post->post_title,

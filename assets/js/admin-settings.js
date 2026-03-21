@@ -151,6 +151,60 @@
 			} );
 	};
 
+	// Reset soul.
+	window.pcResetSoul = function () {
+		if ( ! window.confirm( 'Reset the soul? The AI will reintroduce itself and rewrite its soul from scratch on the next session.' ) ) {
+			return;
+		}
+		var btn    = document.getElementById( 'pc-reset-soul-btn' );
+		var result = document.getElementById( 'pc-reset-soul-result' );
+		var nonce  = document.getElementById( 'pc_reset_soul_nonce' );
+
+		if ( btn ) {
+			btn.disabled = true;
+		}
+		if ( result ) {
+			result.textContent = 'Resetting\u2026';
+			result.style.color = '#888';
+		}
+
+		var data = new URLSearchParams();
+		data.append( 'action', 'pressocampus_reset_soul' );
+		data.append( 'pc_reset_soul_nonce', nonce ? nonce.value : '' );
+
+		fetch( cfg.ajaxUrl, {
+			method: 'POST',
+			body: data,
+		} )
+			.then( function ( r ) {
+				return r.json();
+			} )
+			.then( function ( resp ) {
+				if ( result ) {
+					result.textContent = resp.success ? '\u2713 ' + resp.data.message : '\u2717 ' + ( resp.data && resp.data.message ? resp.data.message : 'Reset failed.' );
+					result.style.color = resp.success ? '#00a32a' : '#d63638';
+				}
+				if ( resp.success ) {
+					var pre = document.getElementById( 'pc-soul-content' );
+					if ( pre ) {
+						pre.textContent = '(Soul reset — connect your AI to write a new soul)';
+					}
+				}
+				if ( btn ) {
+					btn.disabled = false;
+				}
+			} )
+			.catch( function () {
+				if ( result ) {
+					result.textContent = '\u2717 Reset failed.';
+					result.style.color = '#d63638';
+				}
+				if ( btn ) {
+					btn.disabled = false;
+				}
+			} );
+	};
+
 	// Save settings.
 	window.pcSaveSettings = function ( e ) {
 		e.preventDefault();

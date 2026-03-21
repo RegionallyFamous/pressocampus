@@ -12,7 +12,9 @@ After activation, you'll find **Pressocampus** in your WordPress admin sidebar:
 Pressocampus
 ├── Settings
 │   ├── Connect
-│   └── Advanced
+│   ├── Soul
+│   ├── Advanced
+│   └── Diagnostics
 └── History
 ```
 
@@ -42,12 +44,35 @@ Available snippets:
 ### Soul status
 
 A one-line indicator showing:
-- `Soul not yet written` — the AI has not connected and written its soul yet
-- `Soul is live` — the AI has written its soul and the relationship has begun
+- `Soul not yet written` — the AI has not connected and established its identity yet
+- `Soul is live` — the AI has written its soul and the identity document exists
+
+For the full soul content, see the **Soul** tab.
 
 ### Test Connection
 
 A button that sends a `{"method":"ping"}` request to your MCP endpoint and shows whether the endpoint is reachable and responding. A 401 response also counts as "reachable" — it means OAuth is working.
+
+---
+
+## Settings → Soul
+
+The Soul tab shows your AI's identity document and lets you manage it.
+
+### Soul content
+
+The full Markdown content of the soul, displayed read-only. The AI writes and maintains this document in its own voice — it is not a form you fill out.
+
+### Character count bar
+
+Shows how many characters the soul contains relative to the 6,000-character snapshot limit:
+- **Green** — healthy, full soul delivered on every session start
+- **Yellow** (approaching 5,000) — getting long; your AI will start needing to fetch the full soul each session
+- **Red** (over 6,000) — truncated at session start; your AI must call `resources/read` on every connection
+
+### Reset Soul
+
+Replaces the soul with a blank template. On the next session, your AI will re-introduce itself, establish its identity, and write its soul from scratch.
 
 ---
 
@@ -137,7 +162,7 @@ Pressocampus shows in-admin notices for events that need your attention:
 
 | Notice | What it means |
 |--------|---------------|
-| `Soul not yet written` | No AI has connected and written its soul yet — connect a client to start |
+| `Soul not yet written` | No AI has connected and established its identity yet — connect a client to start |
 | `Client token expiring soon` | An authorized app's access will expire in the next 7 days |
 | `Soul was updated` | Your AI updated its soul (shown once per soul change) |
 | `Migration needed` | Your site's domain changed and URIs may be stale |
@@ -152,4 +177,4 @@ On a WordPress site with multiple users:
 - Connected Apps shows only apps connected under the current user
 - The "Download Brain" export is per-user
 
-Users with the `pressocampus_agent` role (i.e., the `pressocampus_service` system user) can interact with the plugin internally but have no access to the admin UI.
+Each user's Soul tab shows only their own soul.

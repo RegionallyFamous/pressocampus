@@ -81,11 +81,9 @@ When Pressocampus activates, it automatically:
 
 2. **Generates an RSA key pair** — used to sign and verify OAuth tokens. Stored encrypted in `wp_options`. Never transmitted.
 
-3. **Creates a service user** — a WordPress user named `pressocampus_service` with a minimal `pressocampus_agent` role. This user owns no memories and exists only for internal plugin operations.
+3. **Registers rewrite rules** — for the `/brain` MCP endpoint and `/.well-known/` discovery endpoints.
 
-4. **Registers rewrite rules** — for the `/.well-known/mcp.json` and `/.well-known/oauth-authorization-server` discovery endpoints.
-
-5. **Redirects you to Settings** — so you can copy your Brain Endpoint URL and connect your first AI.
+4. **Redirects you to Settings** — so you can copy your Brain Endpoint URL and connect your first AI.
 
 None of this requires any configuration. It all happens silently.
 
@@ -98,7 +96,7 @@ After activation, you'll see the **Settings → Connect** page.
 The only thing on this page you need is your **Brain Endpoint URL**:
 
 ```
-https://yoursite.com/wp-json/pressocampus/v1/mcp
+https://yoursite.com/brain
 ```
 
 Copy this. You'll paste it into your AI client. That's the entire setup.
@@ -134,7 +132,6 @@ This removes:
 - All audit log entries
 - All custom database tables
 - All plugin options
-- The `pressocampus_service` user and `pressocampus_agent` role
 
 If you don't check the box, deactivating and deleting the plugin leaves your data intact — useful if you're temporarily disabling the plugin.
 

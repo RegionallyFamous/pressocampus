@@ -104,7 +104,7 @@ Expired memories are:
 - Not counted toward your memory limit
 - Retained in the database for audit purposes
 
-TTL is currently managed via WP-CLI or direct post meta editing. The `remember` MCP tool does not accept an `expires_at` parameter — set expiry after creation with `wp post meta update <post-id> _pressocampus_expires_at <ISO-8601-date>`.
+The `remember` tool accepts an optional `expires_at` parameter — pass an ISO 8601 datetime (e.g. `2026-12-31T23:59:59Z`) and the memory will expire automatically on that date. TTL can also be set after creation with `wp post meta update <post-id> _pressocampus_expires_at <ISO-8601-date>` via WP-CLI.
 
 ---
 

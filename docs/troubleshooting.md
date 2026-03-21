@@ -10,7 +10,7 @@
 ```
 https://yoursite.com/brain
 ```
-Make sure you're using `https://`, not `http://`. The original `wp-json` path also works as a fallback: `https://yoursite.com/wp-json/pressocampus/v1/mcp`.
+Make sure you're using `https://`, not `http://`. The `/brain` URL is the only supported endpoint — direct `/wp-json/` access intentionally returns 404.
 
 **Check the Test Connection button.** In `Pressocampus → Settings → Connect`, click **Test Connection**. This fires a real request and shows the exact error if one occurs.
 
@@ -113,13 +113,13 @@ wp pressocampus list | grep -i "search term"
 
 ## Soul issues
 
-### "My AI created a soul but it's full of placeholders"
+### "My AI created a soul but it's full of placeholder text"
 
-This is expected on first connection. Your AI should walk you through filling them in. If it didn't, start a new conversation and say:
+This is expected on first connection. Your AI should introduce itself, establish its identity, and ask you questions to fill in the relationship sections. If it didn't, start a new conversation and say:
 
-> "Please read my soul and help me fill in the placeholder values."
+> "Please read your soul and rewrite it — introduce yourself and ask me what you need to know."
 
-Your AI will read the soul, see the `[placeholder]` values, and ask you questions to fill them in.
+Your AI will read the soul, see the placeholder sections, and begin the identity and onboarding conversation.
 
 ---
 
@@ -142,9 +142,9 @@ wp pressocampus import --file=brain.json --replace
 
 ### "My soul says 'Status: empty'"
 
-This is the machine-readable signal that tells your AI the soul hasn't been properly filled in yet. Your AI will see this and offer to help you fill it in.
+This is the machine-readable signal that tells your AI the soul hasn't been written yet. Your AI will see this on the next session and begin the introduction and onboarding sequence automatically.
 
-To remove it manually, ask your AI: "Please update my soul and remove the Status: empty line."
+To trigger it manually, ask your AI: "Please read your soul and introduce yourself — write your soul from scratch."
 
 ---
 

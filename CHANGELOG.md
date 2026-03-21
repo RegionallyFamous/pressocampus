@@ -7,6 +7,38 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] — 2026-03-21
+
+### Added
+
+- **Admin Soul tab** — new "Soul" tab on the Settings page showing the full soul content in a read-only viewer, a character count bar with green/yellow/red indicators against the 6 KB snapshot limit, word count, revision count, last-updated time, and memory count. Gives you full visibility into what your AI has written about itself without leaving the WordPress admin.
+- **Reset Soul button** — one-click soul reset from the Soul tab. Replaces the soul with the blank starter template; the AI will re-introduce itself and rewrite its soul from scratch on the next session.
+- **`soul_size_chars` in `initialize` meta** — the MCP `initialize` handshake now includes the full character count of the soul. The AI receives a soft nudge in its instructions when the soul is approaching the 6 KB snapshot limit, prompting it to be more concise.
+- **`update_soul_section` returns `created` flag** — the tool response now includes `"created": true` when a new section is appended, vs. `"created": false` when an existing section is replaced. Documented in the tool description and reference.
+
+### Changed
+
+- **Soul concept redesigned: identity-first** — the Soul is now the AI's portable identity document, not a user preferences file. The starter template leads with `## Who I Am`, `## My Character`, `## My Voice`, and `## My Values` before relationship-facing sections. The AI writes and maintains the soul in its own voice, in the first person.
+- **AI portability framing** — the soul is designed to transfer intact when you switch AI services. A new model reads the soul and becomes the same AI: same name, character, and way of working with you. Documentation across `docs/the-soul.md`, `README.md`, `readme.txt`, and `docs/connecting-your-ai.md` updated to reflect this.
+- **`base_instructions` rewritten** — now describes the soul as the AI's portable identity document and explains the portability guarantee. Emphasizes that writing the soul in a consistent voice is what creates continuity across model switches.
+- **First-connect sequence updated** — when the soul is empty, the AI is instructed to: (1) introduce itself, (2) ask what name the user wants to call it, (3) write its identity sections from self-knowledge, (4) ask two questions to learn about the person, and (5) call `update_soul`.
+- **`update_soul` and `update_soul_section` tool descriptions** — rewritten to reflect AI-voice authorship and the identity-first framing. `update_soul_section` description now covers updating identity sections (e.g., `My Character`, `My Voice`) as well as relationship sections.
+- **Soul update email sent to user's own address** — previously sent to `admin_email` regardless of which user's soul was updated. Now sent to the user whose soul changed; falls back to `admin_email` only if the user record cannot be resolved.
+- **Resource index excerpt depth increased** — up to 500 characters (was 200), with leading Markdown headings stripped so the indexed excerpt captures substantive content rather than section titles.
+- **`list_memories` N+1 query eliminated** — term names for all listed memories are now fetched in a single SQL JOIN instead of one `wp_get_object_terms()` call per post. Postmeta is batch-primed via `update_meta_cache()` before the iteration loop.
+- **Dead code removed** — `Installer::activate()` no longer creates the deprecated `pressocampus_service` system user or `pressocampus_agent` role. `uninstall.php` no longer attempts to clean up those artifacts.
+
+### Fixed
+
+- **`update_soul_section()` formatting bug** — when replacing a middle section, the regex consumed the trailing `\n\n` separator but the replacement string did not restore it, silently collapsing adjacent Markdown sections. The replacement block now explicitly appends `\n\n`.
+- **Stale ETag after soul reset** — the admin Reset Soul button previously called `wp_update_post()` directly, leaving the resource index with the old content hash. The AI's first `update_soul` call after a reset would fail with a spurious conflict error. Fixed: a new `Soul::reset()` method runs the post update and immediately re-upserts the resource index.
+- **`docs/installation.md` and `docs/troubleshooting.md`** — incorrectly listed `/wp-json/pressocampus/v1/mcp` as a working fallback URL. That path returns 404 by design; corrected to the canonical `/brain` URL throughout.
+- **`docs/memories.md`** — incorrectly stated that `expires_at` is not supported by the `remember` tool. It is fully supported; corrected and documented with parameter details in both the memories guide and the MCP tools reference.
+- **`docs/mcp-tools-reference.md`** — used `possible_duplicate` in a `remember` tool example; the actual response field is `possible_related`. Corrected. Also added `tag_memory` to the write-operations rate limit list and documented `expires_at` as a `remember` parameter.
+- **`docs/development.md`** — stated "6 tools"; there are 8 MCP tools. Corrected in two places.
+
+---
+
 ## [1.1.3] — 2026-03-21
 
 ### Changed

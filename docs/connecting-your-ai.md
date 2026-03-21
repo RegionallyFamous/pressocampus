@@ -48,7 +48,7 @@ The first time you send a message, Claude will ask you to authorize. Click the l
 
 ### Step 5 — First conversation
 
-Start a new conversation. Claude reads its soul from the connection handshake before saying a word. If no soul exists yet, Claude will introduce itself, tell you what Pressocampus is, and start getting to know you — writing its own soul as the conversation unfolds.
+Start a new conversation. Claude reads its soul from the connection handshake before saying a word. If no soul exists yet, Claude will introduce itself, ask what you'd like to call it, establish its own identity, and start getting to know you — writing its soul as the conversation unfolds.
 
 ---
 
@@ -127,7 +127,7 @@ The Brain Endpoint URL is the same for everyone — what differs is which WordPr
 
 ## Connecting multiple AI clients
 
-You can connect as many AI clients as you want to the same Pressocampus installation. They all share the same memory store and soul. Each AI reads the same soul and builds on it — the relationship document is cumulative across every client you connect.
+You can connect as many AI clients as you want to the same Pressocampus installation. They all share the same memory store and soul. Each AI reads the same soul and builds on it — the identity document is cumulative across every client you connect.
 
 If two clients write to the same memory simultaneously, **ETag-based optimistic locking** prevents silent overwrites — the second write will receive a `409 Conflict` and the client will re-read before retrying.
 

@@ -22,6 +22,7 @@ Store a new memory permanently.
 | `related` | string[] | No | URIs of related memories |
 | `priority` | string | No | `critical`, `important`, `normal` (default), or `low` |
 | `confidence` | string | No | `high`, `medium` (default), or `low` |
+| `expires_at` | string | No | ISO 8601 datetime when this memory should expire, e.g. `2026-12-31T23:59:59Z` |
 | `context` | string | No | Why you're storing this — appears in History. Max 200 chars. |
 
 ### Returns
@@ -49,7 +50,7 @@ If the content is **similar but not identical** to existing memories, the new me
 {
   "uri": "pressocampus://yoursite.com/memory/xyz67890",
   "name": "Prefers TypeScript",
-  "possible_duplicate": {
+  "possible_related": {
     "uri": "pressocampus://yoursite.com/memory/abc12345",
     "name": "Prefers TypeScript over JavaScript",
     "excerpt": "Strongly prefers TypeScript..."
@@ -161,7 +162,7 @@ To use it:
 
 ## `update_soul`
 
-Write or fully rewrite the Soul — the AI's own record of itself and its relationship with this person.
+Write or fully rewrite the Soul — the AI's identity document covering its name, character, voice, values, and what it knows about this person.
 
 **When to use:** First-time setup (when `soul_status` is `"empty"`) or when the soul needs complete restructuring. For targeted updates to a single section, use `update_soul_section` instead. This creates the soul if it doesn't exist.
 
@@ -193,7 +194,7 @@ Write or fully rewrite the Soul — the AI's own record of itself and its relati
 
 Update a single `## Section` of the soul. **This is the preferred method for soul updates.**
 
-**When to use:** Whenever the AI learns something new about this person — how they think, what they're working on, what they need — that should be captured in the relationship record. Write in the AI's voice: "I've learned they prefer directness." Faster and safer than a full soul rewrite.
+**When to use:** Whenever the AI learns something new about this person (update relationship sections like `This Person` or `How We Work Together`) or when the AI's own sense of its character or voice evolves (update identity sections like `My Character` or `My Voice`). Write in the AI's voice: "I've learned they prefer directness." Faster and safer than a full soul rewrite.
 
 ### Parameters
 
@@ -209,17 +210,22 @@ Update a single `## Section` of the soul. **This is the preferred method for sou
 {
   "uri": "pressocampus://yoursite.com/soul",
   "etag": "f1a2b3c4",
-  "section": "How I Communicate"
+  "section": "How I Communicate",
+  "created": false
 }
 ```
 
+`created: true` means the named section did not exist and was appended as new. `created: false` means an existing section was updated in-place. Use this to detect heading typos — if you expected to update an existing section and `created` is `true`, the heading didn't match.
+
 ### Notes
 
-- If the specified section doesn't exist, it's added to the end of the soul
+- If the specified section doesn't exist, it's appended to the end of the soul and `created: true` is returned
 - Section matching is case-insensitive and trims whitespace
 - The soul's ETag is automatically updated after a section change
 
-### Example
+### Examples
+
+Updating a relationship section:
 
 ```
 User: "Actually, I hate bullet points. Just write in prose."
@@ -229,6 +235,18 @@ AI: [calls update_soul_section]
   with the answer, then explain. Short sentences. Active voice. No padding,
   no affirmations. Direct to the point of blunt is fine."
   context: "User stated preference against bullet points"
+```
+
+Updating an identity section:
+
+```
+AI: [after many sessions, the voice section needs sharpening]
+  [calls update_soul_section]
+  section: "My Voice"
+  content: "Short sentences. Prose, not bullets. I open with the point.
+  No throat-clearing, no affirmations, no summaries of what the person
+  just said. Active voice throughout."
+  context: "Voice has sharpened over many sessions"
 ```
 
 ---
@@ -396,7 +414,7 @@ AI: [calls tag_memory]
 
 ## Rate limits
 
-Write operations (`remember`, `forget`, `update_memory`, `update_soul`, `update_soul_section`) are limited to **30 per minute** per user.
+Write operations (`remember`, `forget`, `update_memory`, `update_soul`, `update_soul_section`, `tag_memory`) are limited to **30 per minute** per user.
 
 Read operations (`resources/list`, `resources/read`, `search_memory`) are limited to **60 per minute** per user.
 

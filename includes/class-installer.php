@@ -32,21 +32,6 @@ class Installer {
 			delete_option( 'pressocampus_sodium_missing' );
 		}
 
-		add_role( 'pressocampus_agent', 'Pressocampus Agent', array() );
-
-		if ( ! username_exists( 'pressocampus_service' ) ) {
-			$user_id = wp_create_user(
-				'pressocampus_service',
-				wp_generate_password( 32, true, true ),
-				'pressocampus_service@' . wp_parse_url( home_url(), PHP_URL_HOST )
-			);
-			if ( ! is_wp_error( $user_id ) ) {
-				$user = new \WP_User( $user_id );
-				$user->set_role( 'pressocampus_agent' );
-				update_option( 'pressocampus_service_user_id', $user_id );
-			}
-		}
-
 		if ( ! extension_loaded( 'openssl' ) ) {
 			deactivate_plugins( plugin_basename( PRESSOCAMPUS_PLUGIN_FILE ) );
 			wp_die( esc_html__( 'Pressocampus requires the PHP OpenSSL extension. Please enable it in your server configuration, then reactivate the plugin.', 'pressocampus' ) );

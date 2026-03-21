@@ -30,6 +30,7 @@ class Settings {
 		add_action( 'wp_ajax_pressocampus_save_settings', array( $this, 'ajax_save_settings' ) );
 		add_action( 'wp_ajax_pressocampus_dismiss_notice', array( $this, 'ajax_dismiss_notice' ) );
 		add_action( 'wp_ajax_pressocampus_run_diagnostics', array( $this, 'ajax_run_diagnostics' ) );
+		add_action( 'wp_ajax_pressocampus_reset_soul', array( $this, 'ajax_reset_soul' ) );
 	}
 
 	public function enqueue_scripts( string $hook ): void {
@@ -227,8 +228,13 @@ CSS;
 		$soul_updated    = '';
 		$soul_revisions  = 0;
 
+		$soul_char_count = 0;
+		$soul_content    = '';
+
 		if ( $soul_post instanceof \WP_Post ) {
+			$soul_content    = CPT::get_raw_content( $soul_post->ID );
 			$soul_word_count = str_word_count( wp_strip_all_tags( $soul_post->post_content ) );
+			$soul_char_count = mb_strlen( $soul_content, 'UTF-8' );
 			$soul_updated    = human_time_diff( strtotime( $soul_post->post_modified_gmt ), time() ) . ' ' . __( 'ago', 'pressocampus' );
 			$soul_revisions  = count( wp_get_post_revisions( $soul_post->ID, array( 'fields' => 'ids' ) ) );
 		}
@@ -376,11 +382,12 @@ CSS;
 		</div>
 		<?php endif; ?>
 
-			<nav class="nav-tab-wrapper" aria-label="<?php esc_attr_e( 'Pressocampus settings tabs', 'pressocampus' ); ?>">
-				<a href="#" class="nav-tab <?php echo $active_tab === 'connect' ? 'nav-tab-active' : ''; ?>" data-tab="connect"><?php esc_html_e( 'Connect', 'pressocampus' ); ?></a>
-				<a href="#" class="nav-tab <?php echo $active_tab === 'advanced' ? 'nav-tab-active' : ''; ?>" data-tab="advanced"><?php esc_html_e( 'Advanced', 'pressocampus' ); ?></a>
-				<a href="#" class="nav-tab <?php echo $active_tab === 'diagnostics' ? 'nav-tab-active' : ''; ?>" data-tab="diagnostics"><?php esc_html_e( 'Diagnostics', 'pressocampus' ); ?></a>
-			</nav>
+		<nav class="nav-tab-wrapper" aria-label="<?php esc_attr_e( 'Pressocampus settings tabs', 'pressocampus' ); ?>">
+			<a href="#" class="nav-tab <?php echo $active_tab === 'connect' ? 'nav-tab-active' : ''; ?>" data-tab="connect"><?php esc_html_e( 'Connect', 'pressocampus' ); ?></a>
+			<a href="#" class="nav-tab <?php echo $active_tab === 'soul' ? 'nav-tab-active' : ''; ?>" data-tab="soul"><?php esc_html_e( 'Soul', 'pressocampus' ); ?></a>
+			<a href="#" class="nav-tab <?php echo $active_tab === 'advanced' ? 'nav-tab-active' : ''; ?>" data-tab="advanced"><?php esc_html_e( 'Advanced', 'pressocampus' ); ?></a>
+			<a href="#" class="nav-tab <?php echo $active_tab === 'diagnostics' ? 'nav-tab-active' : ''; ?>" data-tab="diagnostics"><?php esc_html_e( 'Diagnostics', 'pressocampus' ); ?></a>
+		</nav>
 
 			<!-- ===== CONNECT TAB ===== -->
 			<div id="pc-tab-connect" class="pc-tab-panel <?php echo $active_tab === 'connect' ? 'active' : ''; ?>">
@@ -457,9 +464,116 @@ CSS;
 					<span id="pc-test-result" style="margin-left:8px;vertical-align:middle"></span>
 				</p>
 
-			</div><!-- /connect tab -->
+		</div><!-- /connect tab -->
 
-			<!-- ===== ADVANCED TAB ===== -->
+		<!-- ===== SOUL TAB ===== -->
+		<div id="pc-tab-soul" class="pc-tab-panel <?php echo $active_tab === 'soul' ? 'active' : ''; ?>">
+
+			<h2><?php esc_html_e( 'Your AI\'s Soul', 'pressocampus' ); ?></h2>
+			<p><?php esc_html_e( 'The Soul is your AI\'s identity document — its name, character, voice, values, and what it knows about you. The AI writes and maintains it in its own voice. Every session starts by reading it. If you switch AI services, the new model reads this document and picks up as the same AI.', 'pressocampus' ); ?></p>
+
+			<?php if ( $soul_status === 'empty' ) : ?>
+				<div class="notice notice-info inline" style="margin:0 0 20px">
+					<p><?php esc_html_e( 'No soul written yet. Connect your AI — it will introduce itself, establish its identity, and write its soul on first connection.', 'pressocampus' ); ?></p>
+				</div>
+			<?php else : ?>
+
+			<?php
+			// Character count bar.
+			$char_limit  = 6000;
+			$char_pct    = min( 100, (int) round( ( $soul_char_count / $char_limit ) * 100 ) );
+			if ( $soul_char_count >= $char_limit ) {
+				$bar_color = '#d63638'; // red — over limit
+			} elseif ( $soul_char_count >= 5000 ) {
+				$bar_color = '#dba617'; // yellow — approaching
+			} else {
+				$bar_color = '#00a32a'; // green — healthy
+			}
+			?>
+
+			<div style="margin-bottom:20px">
+				<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+					<span style="font-size:13px;color:#50575e">
+						<?php
+						printf(
+							/* translators: 1: character count, 2: limit */
+							esc_html__( '%1$s / %2$s characters', 'pressocampus' ),
+							'<strong>' . esc_html( number_format_i18n( $soul_char_count ) ) . '</strong>',
+							esc_html( number_format_i18n( $char_limit ) )
+						);
+						?>
+					</span>
+					<?php if ( $soul_char_count >= 5000 ) : ?>
+					<span style="font-size:12px;color:<?php echo esc_attr( $bar_color ); ?>">
+						<?php esc_html_e( 'Approaching snapshot limit — your AI will need to fetch the full soul on each session start.', 'pressocampus' ); ?>
+					</span>
+					<?php endif; ?>
+				</div>
+				<div style="background:#dcdcde;border-radius:3px;height:6px;overflow:hidden">
+					<div style="background:<?php echo esc_attr( $bar_color ); ?>;width:<?php echo esc_attr( $char_pct ); ?>%;height:6px;border-radius:3px;transition:width 0.3s"></div>
+				</div>
+			</div>
+
+			<div style="margin-bottom:12px;display:flex;gap:12px;align-items:center;font-size:13px;color:#50575e">
+				<span>
+					<?php
+					printf(
+						/* translators: 1: word count, 2: time, 3: revisions */
+						esc_html__( '%1$s words · updated %2$s · %3$s revisions', 'pressocampus' ),
+						'<strong>' . esc_html( number_format_i18n( $soul_word_count ) ) . '</strong>',
+						'<strong>' . esc_html( $soul_updated ) . '</strong>',
+						'<strong>' . esc_html( number_format_i18n( $soul_revisions ) ) . '</strong>'
+					);
+					?>
+				</span>
+				<span>·</span>
+				<span>
+					<?php
+					$soul_host = wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost';
+				$soul_q    = new \WP_Query( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					array(
+						'post_type'      => PRESSOCAMPUS_CPT,
+						'post_status'    => 'publish',
+						'author'         => $user_id,
+						'posts_per_page' => 1,
+						'no_found_rows'  => false,
+						'fields'         => 'ids',
+						'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+							array(
+								'key'     => '_pressocampus_uri',
+								'value'   => array(
+									Soul::get_uri( $soul_host ),
+									Soul::get_index_uri( $soul_host ),
+								),
+								'compare' => 'NOT IN',
+							),
+						),
+					)
+				);
+					printf(
+						/* translators: %s: memory count */
+						esc_html__( '%s memories stored', 'pressocampus' ),
+						'<strong>' . esc_html( number_format_i18n( $soul_q->found_posts ) ) . '</strong>'
+					);
+					?>
+				</span>
+			</div>
+
+			<pre id="pc-soul-content" style="background:#f6f7f7;border:1px solid #dcdcde;border-radius:4px;padding:16px;max-height:500px;overflow:auto;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word;font-family:monospace"><?php echo esc_html( $soul_content ); ?></pre>
+
+			<?php endif; ?>
+
+			<div style="margin-top:20px;padding-top:16px;border-top:1px solid #dcdcde">
+				<h3 style="margin-top:0"><?php esc_html_e( 'Reset Soul', 'pressocampus' ); ?></h3>
+				<p><?php esc_html_e( 'Replaces the soul with a blank template. On the next session, your AI will re-introduce itself and write its soul from scratch.', 'pressocampus' ); ?></p>
+				<?php wp_nonce_field( 'pressocampus_reset_soul', 'pc_reset_soul_nonce' ); ?>
+				<button class="button button-secondary" style="color:#d63638;border-color:#d63638" id="pc-reset-soul-btn" onclick="pcResetSoul()"><?php esc_html_e( 'Reset Soul', 'pressocampus' ); ?></button>
+				<span id="pc-reset-soul-result" style="margin-left:8px;vertical-align:middle"></span>
+			</div>
+
+		</div><!-- /soul tab -->
+
+		<!-- ===== ADVANCED TAB ===== -->
 			<div id="pc-tab-advanced" class="pc-tab-panel <?php echo $active_tab === 'advanced' ? 'active' : ''; ?>">
 
 				<h2><?php esc_html_e( 'Connected Apps', 'pressocampus' ); ?></h2>
@@ -1155,6 +1269,27 @@ CSS;
 		update_option( 'pressocampus_settings', $settings, false );
 
 		wp_send_json_success( array( 'message' => __( 'Settings saved.', 'pressocampus' ) ) );
+	}
+
+	// AJAX: Reset Soul
+
+	public function ajax_reset_soul(): void {
+		check_ajax_referer( 'pressocampus_reset_soul', 'pc_reset_soul_nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'pressocampus' ) ) );
+		}
+
+		$user_id = get_current_user_id();
+		$host    = wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost';
+
+		$result = $this->soul->reset( $user_id, $host );
+
+		if ( ! empty( $result['error'] ) ) {
+			wp_send_json_error( array( 'message' => $result['message'] ) );
+		}
+
+		wp_send_json_success( array( 'message' => __( 'Soul reset. Your AI will reintroduce itself and rewrite its soul on the next session.', 'pressocampus' ) ) );
 	}
 
 	// AJAX: Dismiss notice

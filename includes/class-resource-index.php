@@ -37,8 +37,13 @@ class ResourceIndex {
 	public function upsert( int $post_id, string $uri, int $user_id, string $content ): void {
 		global $wpdb;
 
-		$hash    = md5( $content );
-		$excerpt = mb_substr( wp_strip_all_tags( $content ), 0, 200, 'UTF-8' );
+		$hash = md5( $content );
+
+		// Strip Markdown headings from the start so the excerpt covers substantive content
+		// rather than repeating the title. Then extend to 500 chars for better FULLTEXT coverage.
+		$stripped = wp_strip_all_tags( $content );
+		$stripped = (string) preg_replace( '/^[#\s]+[^\n]*\n*/m', '', ltrim( $stripped ), 3 );
+		$excerpt  = mb_substr( trim( $stripped ), 0, 500, 'UTF-8' );
 
 		$wpdb->query(
 			$wpdb->prepare(

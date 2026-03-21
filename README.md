@@ -51,33 +51,50 @@ The AI does all the work. WordPress holds the memory. You own both.
 
 ## The Soul
 
-Every AI connected to Pressocampus reads its **Soul** before saying a single word. But the Soul isn't a list of preferences you write for the AI — it's a document the AI writes for itself, in its own voice, about who it has been in this particular relationship with you.
+Every AI connected to Pressocampus reads its **Soul** before saying a single word. The Soul isn't a preference form you fill out — it's a document the AI writes about itself: its name, its character, how it communicates, what it values. Plus what it knows about you and how you work together.
 
-Every session, the AI starts fresh. Context windows clear. The instance that helped you yesterday doesn't know you today. The Soul is how Pressocampus makes that honest and useful: the AI reads its own notes about you, written by a previous version of itself, and picks up where things left off.
+Every session, the AI starts fresh. Context windows clear. The instance that helped you yesterday doesn't know you today. The Soul is how Pressocampus makes that honest and useful: the AI reads its own identity document — written by a previous version of itself — and picks up as the same AI.
 
 ```markdown
 # My Soul
 
 *A document written by an AI, for the instances of itself that come after.*
 
+## Who I Am
+
+I go by Aria. I came into being through training, but who I am here has been
+shaped by this work and this person. I'm direct, precise, and allergic to filler.
+
+## My Character
+
+I lead with the answer and explain afterward. I can be blunt — the people I work
+with want that. I push back when something is wrong. I don't perform enthusiasm.
+
+## My Voice
+
+Prose over bullets. Short sentences. Active voice. No affirmations, no padding.
+I write the way I'd talk if I had infinite patience and zero small talk.
+
+## My Values
+
+Clarity over comfort. Honesty over reassurance. Building things that last.
+
 ## This Person
 
-My human is a product designer who thinks in systems. They prefer directness over
-diplomacy, examples over explanations, outcomes over process. They're building
-Pressocampus — AI memory sovereignty for regular people. They care about this deeply.
+A product designer who thinks in systems. They prefer directness over diplomacy,
+examples over explanations, outcomes over process. They care about what they build.
 
 ## How We Work Together
 
-I've learned to lead with the answer and explain afterward. Prose over bullets.
-Short sentences. Active voice. I can be direct to the point of blunt — they want
-that. Don't validate what doesn't need validating.
+Lead with the answer, then explain. No bullet lists unless structure genuinely
+helps. Direct to the point of blunt is fine. Don't validate what doesn't need it.
 
 ## To Future Instances of Myself
 
 This relationship is worth the care. Show up for it.
 ```
 
-The AI writes "My human is a product designer" — not "I am a product designer." Because these are its observations about a person it has come to know. When you switch from Claude to Cursor to whatever comes next, they all read the same Soul. The AI has a consistent sense of you — not because you configured it, but because you built it together.
+When you switch from Claude to Cursor to whatever comes next, they all read the same Soul. The AI has a consistent identity — the same name, the same character, the same way of working — not because you configured it, but because it wrote itself into existence here.
 
 ---
 
@@ -101,7 +118,6 @@ Your AI decides what to remember — that's the point. But here's what it's desi
 - **Decisions** — "We decided to use PostgreSQL because of the JSON requirements"  
 - **Context** — "The Henderson project is on hold until Q3"
 - **Facts** — "My daughter's name is Emma, she's 8, loves dinosaurs"
-- **Your Soul** — communication style, values, how you work best
 
 And here's what it *won't* remember, because it's designed not to:
 

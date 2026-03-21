@@ -38,9 +38,6 @@ function pressocampus_uninstall(): void {
 		wp_delete_post( $pressocampus_post->ID, true );
 	}
 
-	// Fetch service user id before deleting options.
-	$pressocampus_service_user_id = (int) get_option( 'pressocampus_service_user_id' );
-
 	// Delete dynamic per-client expiry notice options (keyed by client ID).
 	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	$wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE 'pressocampus_expiry_notice_%'" );
@@ -51,7 +48,6 @@ function pressocampus_uninstall(): void {
 		'pressocampus_rsa_private_key',
 		'pressocampus_rsa_public_key',
 		'pressocampus_encryption_key',
-		'pressocampus_service_user_id',
 		'pressocampus_sodium_missing',
 		'pressocampus_migration_error',
 		'pressocampus_vendor_missing',
@@ -61,14 +57,6 @@ function pressocampus_uninstall(): void {
 	foreach ( $pressocampus_options as $pressocampus_option ) {
 		delete_option( $pressocampus_option );
 	}
-
-	// Delete service user.
-	if ( $pressocampus_service_user_id > 0 ) {
-		wp_delete_user( $pressocampus_service_user_id );
-	}
-
-	// Remove custom role.
-	remove_role( 'pressocampus_agent' );
 
 	// Flush rewrite rules.
 	flush_rewrite_rules();

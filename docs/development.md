@@ -42,7 +42,7 @@ pressocampus/
 │   ├── class-installer.php   Activation, deactivation, DB migrations
 │   ├── class-cpt.php         Custom post types and taxonomies
 │   ├── class-soul.php        Soul and Index management
-│   ├── class-mcp-endpoint.php  MCP JSON-RPC dispatcher + 6 tools
+│   ├── class-mcp-endpoint.php  MCP JSON-RPC dispatcher + 8 tools
 │   ├── class-auth.php        OAuth token validation
 │   ├── class-oauth-server.php  OAuth 2.1 endpoints (league/oauth2-server)
 │   ├── class-resource-index.php  DB index table, search, dedup
@@ -149,7 +149,7 @@ make test-coverage
 
 Tests live in `tests/MCPDispatcherTest.php` and cover:
 - MCP `initialize` handshake
-- All 6 MCP tools (success and error cases)
+- All 8 MCP tools (success and error cases)
 - Rate limiting behavior
 - Soul protection (can't be forgotten)
 - ETag conflict detection

@@ -3,7 +3,7 @@ Contributors: regionallyfamous
 Tags: ai, memory, mcp, claude, chatgpt
 Requires at least: 6.4
 Tested up to: 6.9
-Stable tag: 1.1.3
+Stable tag: 1.2.0
 Requires PHP: 8.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -28,7 +28,7 @@ Install Pressocampus on any WordPress site and your AI will start building a per
 
 **The Soul**
 
-The Soul is a document the AI writes about itself and its relationship with you. Not a settings file you fill out — the AI writes it, in its own voice, the way you might write notes about a person you've come to know. "My human thinks in systems. They prefer directness over diplomacy." Every session, the AI reads its own notes and picks up where things left off. When you switch AI tools, the new one reads the same Soul and begins from the same foundation.
+The Soul is the AI's identity document — its name, character, voice, and values, plus what it knows about you. Not a settings file you fill out — the AI writes it, in its own voice. "I go by Aria. I'm direct, precise, and write in prose over bullets." Every session, the AI reads its own identity and picks up as the same AI. When you switch AI services, the new model reads the same Soul and becomes the same AI — same name, same character, same way of working with you.
 
 **Your memory, your data**
 
@@ -87,13 +87,26 @@ Yes. Connect as many AI clients as you want — they all share the same memory s
 
 = What is the Soul? =
 
-The Soul is a document the AI writes about itself and its relationship with you — in its own voice, for future instances of itself. Not a preference form you fill out. It sounds like: "My human is a product designer who thinks in systems. I've learned they prefer directness over diplomacy." Every AI reads it at the start of every session and builds on it as the relationship deepens.
+The Soul is the AI's identity document — written in the AI's own voice, for future instances of itself. It covers who the AI is (its name, character, how it writes, what it values) and what it has learned about you. Not a preference form you fill out. It sounds like: "I go by Aria. I'm direct to the point of blunt. My human is a product designer who thinks in systems — I've learned they prefer directness over diplomacy." When you switch AI services, the new model reads this Soul and becomes the same AI. Same name, same character, same way of working. The relationship continues.
 
 = Do I need a specific hosting setup? =
 
 Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin checks your setup automatically and tells you if anything needs attention. If you're on nginx (not Apache), no `.htaccess` changes are needed.
 
 == Changelog ==
+
+= 1.2.0 =
+* Added: Soul tab in Settings — read-only soul viewer, character count bar (with green/yellow/red indicators against the 6 KB limit), word count, revisions, last updated, and memory count.
+* Added: Reset Soul button — replaces the soul with the blank starter template so the AI reintroduces itself from scratch on the next session.
+* Changed: Soul redesigned as the AI's portable identity document — leads with Who I Am, My Character, My Voice, My Values. The AI writes it in its own voice; switching AI services is seamless because the new model reads the same soul.
+* Changed: First-connect sequence — AI introduces itself, asks what name you prefer, writes identity sections, then learns about you.
+* Changed: Soul update notification email now goes to the user whose soul changed rather than the site admin address.
+* Changed: list_memories N+1 query eliminated — term names batch-fetched in a single JOIN; postmeta batch-primed before the loop.
+* Changed: Resource index excerpt depth increased from 200 to 500 characters, with leading headings stripped.
+* Fixed: update_soul_section formatting bug — adjacent sections were collapsing when the trailing blank line was not restored after a replace.
+* Fixed: Stale ETag after soul reset — Reset Soul now updates the resource index immediately, preventing a spurious conflict error on the AI's first soul update.
+* Fixed: Documentation factual errors — /wp-json/ URL not a fallback (404 by design), expires_at is supported in remember, possible_related (not possible_duplicate), 8 tools (not 6).
+* Removed: Deprecated pressocampus_service system user and pressocampus_agent role no longer created on activation.
 
 = 1.1.3 =
 * Updated all docs, admin settings page, and user-facing copy to match the redesigned Soul concept from v1.1.2.
