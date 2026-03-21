@@ -121,7 +121,8 @@ SOUL;
 
 		$status = str_contains( $content, 'Status: empty' ) ? 'empty' : 'complete';
 
-		if ( mb_strlen( $content, 'UTF-8' ) <= 2048 ) {
+		// 6 000 chars covers a well-developed soul without ballooning the initialize payload.
+		if ( mb_strlen( $content, 'UTF-8' ) <= 6000 ) {
 			return array(
 				'snapshot'  => $content,
 				'etag'      => $etag,
@@ -130,8 +131,10 @@ SOUL;
 			);
 		}
 
-		$truncated_snapshot = mb_substr( $content, 0, 500, 'UTF-8' )
-			. "\n\n[Soul truncated — use resources/read to get full content]";
+		// When truncated, include a meaningful opening excerpt so the AI has context
+		// while it fetches the full version, and an explicit instruction at the end.
+		$truncated_snapshot = mb_substr( $content, 0, 1500, 'UTF-8' )
+			. "\n\n…[Soul truncated at 1500 chars. Call resources/read with the soul URI for the complete content before responding.]";
 
 		return array(
 			'snapshot'  => $truncated_snapshot,

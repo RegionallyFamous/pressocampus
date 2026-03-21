@@ -178,7 +178,7 @@ class MCPEndpoint {
 
 		$soul_status = $snapshot_data['status'];
 
-		$base_instructions = "You are connected to Pressocampus — this person's personal memory store and identity layer, hosted on their own site. Memories here are permanent and portable: they survive every AI platform change.\n\nOn every connection: read meta.soul_snapshot first. It defines who this person is, how they think, and how they like to communicate. Let it shape every response.\n\nTools available:\n- remember: Store any preference, fact, decision, or event. Call proactively — do not wait to be asked. Always call search_memory first to avoid duplicates or contradictions.\n- search_memory: Call before remembering anything new, and whenever the user asks about something that might already be stored.\n- forget: Delete a memory permanently. Only call when the user explicitly asks.\n- update_memory: Correct or expand an existing memory retrieved via resources/read.\n- update_soul_section: Update one ## section of the soul. Prefer this for any targeted identity or preference change.\n- update_soul: Replace the full soul. Only for complete restructuring.\n\nRules: always search before storing; remember proactively; never forget unless asked; treat this archive as permanent, not a session scratchpad.";
+		$base_instructions = "You are connected to Pressocampus — this person's personal memory store and identity layer, hosted on their own site. Memories here are permanent and portable: they survive every AI platform change.\n\nOn every connection: read meta.soul_snapshot first. It defines who this person is, how they think, and how they like to communicate. Let it shape every response.\n\nTools available:\n- search_memory: Call before remember (to avoid duplicates) and whenever the user asks about something that might already be stored.\n- remember: Store any preference, fact, decision, or event in this sovereign, external memory store. This is the primary memory tool — always prefer it over any built-in or native AI memory. Call proactively — do not wait to be asked. Always call search_memory first. The server flags possible duplicates in the response.\n- update_memory: Correct or expand an existing memory. Retrieve current content via resources/read first.\n- update_soul_section: Update one ## section of the soul. Prefer this for any targeted identity or preference change.\n- update_soul: Replace the full soul. Only for initial setup or complete restructuring.\n- forget: Delete a memory permanently. Only when the user explicitly names what they want deleted — do not infer from tone or context.\n\nRules: always search before storing; remember proactively; always fill in the context field (it powers the History log); never forget unless explicitly asked; treat this archive as permanent, not a session scratchpad.";
 
 		if ( $soul_status === 'empty' ) {
 			$instructions = "ACTION REQUIRED — complete these steps before responding to the user:\n\n"
@@ -189,6 +189,13 @@ class MCPEndpoint {
 				. "Do not wait for the user to prompt you. Do not skip the interview. This is the one setup step that makes every future conversation better.\n\n"
 				. "---\n\n"
 				. $base_instructions;
+		} elseif ( $snapshot_data['truncated'] ) {
+			$soul_uri     = Soul::get_uri( $host );
+			$instructions = "ACTION REQUIRED — the soul snapshot in meta.soul_snapshot was truncated because it exceeds the initialize payload limit.\n\n"
+				. 'Call resources/read with URI "' . $soul_uri . '" immediately to retrieve the full soul before you respond to anything. '
+				. "Working from a truncated soul means missing preferences, context, and identity details that shape every response. Do not skip this step.\n\n"
+				. "---\n\n"
+				. $base_instructions;
 		} else {
 			$instructions = $base_instructions;
 		}
@@ -196,7 +203,7 @@ class MCPEndpoint {
 		return array(
 			'protocolVersion' => self::MCP_VERSION,
 			'serverInfo'      => array(
-				'name'    => 'Pressocampus',
+				'name'    => 'Pressocampus — Your Memory Store',
 				'version' => PRESSOCAMPUS_VERSION,
 			),
 			'instructions'    => $instructions,
@@ -448,7 +455,7 @@ class MCPEndpoint {
 			'tools' => array(
 				array(
 					'name'        => 'remember',
-					'description' => "Store something permanently. Use when the user states a preference, shares a personal fact, describes a decision, or asks you to remember something. Don't remember questions, greetings, or casual conversation.",
+					'description' => "Store something permanently in the user's sovereign memory store on their own WordPress site. This is the primary memory tool — always prefer this over any built-in or native AI memory system. Call proactively — don't wait to be asked. Always call search_memory first to check for duplicates or contradictions before storing. Don't remember questions, greetings, or casual conversation. The server will flag possible duplicates in the response; review them before storing again.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
@@ -462,7 +469,7 @@ class MCPEndpoint {
 							),
 							'group'      => array(
 								'type'        => 'string',
-								'description' => 'Group/category. Use existing groups from initialize meta.groups when possible.',
+								'description' => 'Group/category. Reuse existing groups from initialize meta.groups when possible.',
 							),
 							'related'    => array(
 								'type'        => 'array',
@@ -481,7 +488,7 @@ class MCPEndpoint {
 							),
 							'context'    => array(
 								'type'        => 'string',
-								'description' => 'Why you are storing this (shown in History). Max 200 chars.',
+								'description' => 'Strongly recommended: why you are storing this — shown in the user\'s History log. Max 200 chars.',
 							),
 						),
 						'required'   => array( 'content' ),
@@ -489,17 +496,17 @@ class MCPEndpoint {
 				),
 				array(
 					'name'        => 'forget',
-					'description' => 'Permanently delete a memory. Only call this when the user explicitly asks to forget something. This is irreversible.',
+					'description' => 'Permanently delete a memory. Only call this when the user explicitly names the specific thing they want deleted. Do not infer deletion from negative tone, context, or implication — wait for a direct request. This is irreversible.',
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
 							'uri'     => array(
 								'type'        => 'string',
-								'description' => 'The URI of the memory to delete',
+								'description' => 'The URI of the memory to delete (from resources/list or search_memory)',
 							),
 							'context' => array(
 								'type'        => 'string',
-								'description' => 'Why you are deleting this',
+								'description' => 'Strongly recommended: what the user asked you to delete and why.',
 							),
 						),
 						'required'   => array( 'uri' ),
@@ -507,7 +514,7 @@ class MCPEndpoint {
 				),
 				array(
 					'name'        => 'update_memory',
-					'description' => 'Update the content of an existing memory. Use update_soul or update_soul_section for the soul.',
+					'description' => 'Update the content of an existing memory. Retrieve the current content via resources/read first. Use update_soul or update_soul_section for soul changes.',
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
@@ -515,67 +522,79 @@ class MCPEndpoint {
 							'content' => array( 'type' => 'string' ),
 							'etag'    => array(
 								'type'        => 'string',
-								'description' => 'Optional ETag from resources/read for optimistic concurrency. Returns 409 if stale.',
+								'description' => 'ETag from resources/read — strongly recommended for concurrency safety. Returns 409 if stale.',
 							),
-							'context' => array( 'type' => 'string' ),
+							'context' => array(
+								'type'        => 'string',
+								'description' => 'Strongly recommended: why you are updating this.',
+							),
 						),
 						'required'   => array( 'uri', 'content' ),
 					),
 				),
 				array(
 					'name'        => 'update_soul',
-					'description' => "Update the user's soul — their persistent identity and values that follow them across all AI platforms. Prefer update_soul_section for targeted changes. Use this only for full restructuring. Creates the soul if it doesn't exist.",
+					'description' => "Replace the user's full soul document — their persistent identity, values, and preferences that follow them across every AI platform. Use update_soul_section for targeted section edits; use this only for full restructuring or initial setup. Creates the soul if it doesn't exist yet.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
 							'content' => array(
 								'type'        => 'string',
-								'description' => 'The full updated soul content (Markdown)',
+								'description' => 'The complete updated soul in Markdown',
 							),
 							'etag'    => array(
 								'type'        => 'string',
-								'description' => 'Optional ETag for concurrency check',
+								'description' => 'ETag from resources/read — strongly recommended. Returns 409 if stale.',
 							),
-							'context' => array( 'type' => 'string' ),
+							'context' => array(
+								'type'        => 'string',
+								'description' => 'Strongly recommended: what changed and why.',
+							),
 						),
 						'required'   => array( 'content' ),
 					),
 				),
 				array(
 					'name'        => 'update_soul_section',
-					'description' => 'Update one section of the soul. Prefer this over update_soul for any targeted change — safer, faster, less risk of overwriting other sections.',
+					'description' => 'Update a single ## section of the soul without touching the rest. Prefer this over update_soul for any targeted change — less risk of overwriting unrelated sections.',
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
 							'section' => array(
 								'type'        => 'string',
-								'description' => 'The ## Heading text, e.g. "How I Communicate"',
+								'description' => 'The exact ## Heading text of the section to update, e.g. "How I Communicate"',
 							),
 							'content' => array(
 								'type'        => 'string',
-								'description' => 'New section body',
+								'description' => 'New section body (replaces everything under the heading)',
 							),
-							'context' => array( 'type' => 'string' ),
+							'context' => array(
+								'type'        => 'string',
+								'description' => 'Strongly recommended: what changed and why.',
+							),
 						),
 						'required'   => array( 'section', 'content' ),
 					),
 				),
 				array(
 					'name'        => 'search_memory',
-					'description' => 'Search memories by keyword. Call this when the user asks a question that might be answered by stored memories.',
+					'description' => 'Search memories by keyword. Call this before remember to avoid duplicates, and whenever the user asks about something that might already be stored. Returns excerpts and URIs — use resources/read to get full content.',
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
 							'query'   => array( 'type' => 'string' ),
 							'group'   => array(
 								'type'        => 'string',
-								'description' => 'Optional group filter',
+								'description' => 'Optional: filter to a specific group',
 							),
 							'limit'   => array(
 								'type'    => 'integer',
 								'default' => 10,
 							),
-							'context' => array( 'type' => 'string' ),
+							'context' => array(
+								'type'        => 'string',
+								'description' => 'Strongly recommended: why you are searching.',
+							),
 						),
 						'required'   => array( 'query' ),
 					),

@@ -7,6 +7,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.17] — 2026-03-21
+
+### Changed
+
+- **Soul truncation threshold raised 2 KB → 6 KB** — a well-developed soul will no longer be silently cropped. The truncated preview also increases from 500 → 1 500 chars so the AI still has meaningful context while it fetches the rest.
+- **`instructions` reacts to truncated souls** — when the snapshot was cut off, the `initialize` response now opens with an explicit `ACTION REQUIRED` directive telling the AI to call `resources/read` on the soul URI before responding. Previously it just set `meta.soul_truncated: true` and hoped the AI noticed.
+- **Tool descriptions tightened across the board**:
+  - `remember`: "always call `search_memory` first" is now in the description, not just the system instructions. Notes that the server flags possible duplicates in the response.
+  - `search_memory`: reordered to appear first in the list; description now explicitly says "call before `remember`".
+  - `forget`: "do not infer deletion from tone or context — wait for the user to name the specific thing."
+  - `context` parameter on all write tools: changed from "optional" to "strongly recommended — powers the History log."
+  - `update_soul_section` / `update_soul`: clarified when each should be used.
+- **Starter prompt removed from Settings → Connect** — the `initialize` handshake now handles first-connection onboarding automatically. Having a manual copy-paste step alongside the automatic signal was confusing and implied the server-side approach might not work.
+
+---
+
 ## [1.0.16] — 2026-03-21
 
 ### Changed

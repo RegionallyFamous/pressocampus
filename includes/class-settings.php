@@ -291,20 +291,6 @@ CSS;
 							<?php endif; ?>
 						</td>
 					</tr>
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Starter Prompt', 'pressocampus' ); ?></th>
-						<td>
-							<?php
-							$starter = sprintf(
-								/* translators: %s: site name */
-								__( "I've just connected my memory store at %s to this conversation. Please introduce yourself, explain what you can now do with my memory store, then read my soul and tell me what you learned about me before we begin.", 'pressocampus' ),
-								$site_name
-							);
-							?>
-							<button class="button" onclick="pcCopy(<?php echo wp_json_encode( $starter ); ?>, this)"><?php esc_html_e( 'Copy Starter Prompt', 'pressocampus' ); ?></button>
-							<p class="description"><?php esc_html_e( 'Paste this into your AI client to kick off the first conversation.', 'pressocampus' ); ?></p>
-						</td>
-					</tr>
 				</table>
 
 				<h2><?php esc_html_e( 'Connection Test', 'pressocampus' ); ?></h2>
