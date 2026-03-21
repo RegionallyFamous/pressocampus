@@ -15,9 +15,6 @@ parameters:
         - tests/
         - build/ (?)
 
-    bootstrapFiles:
-        - vendor/php-stubs/wordpress-stubs/wordpress-stubs.php
-
     # Suppress errors from WordPress globals that PHPStan doesn't know about
     ignoreErrors:
         # WP_CLI is a runtime global — not a class PHPStan can resolve

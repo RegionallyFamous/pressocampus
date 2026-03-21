@@ -1,7 +1,7 @@
 {
     "name": "pressocampus/pressocampus",
     "description": "Turn WordPress into your AI's persistent memory store",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "require": {
@@ -34,7 +34,7 @@
         "test:coverage": "vendor/bin/phpunit --coverage-text",
         "lint": "vendor/bin/phpcs",
         "lint:fix": "vendor/bin/phpcbf",
-        "analyse": "vendor/bin/phpstan analyse --memory-limit=512M",
+        "analyse": "vendor/bin/phpstan analyse --memory-limit=2G",
         "build": "bash bin/build.sh",
         "check": [
             "@lint",
