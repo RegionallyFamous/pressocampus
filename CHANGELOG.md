@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.8] — 2026-03-21
+
+### Fixed
+
+- **"Authorization with the MCP server failed" — root cause identified and fixed.** When an AI client uses the `/brain` pretty-URL shortcut (e.g. `https://yoursite.com/brain`), WordPress's rewrite rule sets `rest_route=/pressocampus/v1/mcp` but leaves `$_SERVER['REQUEST_URI']` as `/brain`. The Bearer-token authentication filter checked only `REQUEST_URI`, so it never saw the correct namespace, never validated the token, and every authenticated request returned 401 — even after the user had completed OAuth successfully. Claude interpreted the perpetual 401 as an authorization failure. Fixed by also checking the `rest_route` query variable (populated by the rewrite) in both the authentication filter and the `WWW-Authenticate` header filter.
+
+---
+
 ## [1.0.7] — 2026-03-21
 
 ### Fixed

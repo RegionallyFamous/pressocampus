@@ -52,10 +52,14 @@ class Auth {
 			return $response;
 		}
 
-		$route = $request->get_route();
+		// Also handle /brain pretty-URL rewrite where get_route() returns '/brain'
+		// but the actual REST route is /pressocampus/v1/mcp.
+		$route      = $request->get_route();
+		$rest_route = (string) ( $GLOBALS['wp']->query_vars['rest_route'] ?? '' );
 		if (
 			! str_contains( $route, '/pressocampus/v1/' ) &&
-			$route !== '/pressocampus/v1/mcp'
+			! str_contains( $rest_route, '/pressocampus/v1/' ) &&
+			$route !== '/brain'
 		) {
 			return $response;
 		}
@@ -86,10 +90,14 @@ class Auth {
 	 */
 	public function authenticate_request( mixed $error ): mixed {
 		// Only act on our own namespace.
+		// Also handle requests routed via the /brain pretty-URL rewrite, where
+		// REQUEST_URI is "/brain" but rest_route resolves to /pressocampus/v1/mcp.
 		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$rest_route  = (string) ( $GLOBALS['wp']->query_vars['rest_route'] ?? '' );
 		if (
 			! str_contains( $request_uri, '/pressocampus/v1/' ) &&
-			! str_contains( $request_uri, 'pressocampus%2Fv1%2F' )
+			! str_contains( $request_uri, 'pressocampus%2Fv1%2F' ) &&
+			! str_contains( $rest_route, '/pressocampus/v1/' )
 		) {
 			return $error;
 		}
