@@ -105,7 +105,7 @@ class WPUri implements UriInterface {
 	public function __construct( private string $uri = '' ) {}
 
 	public function getScheme(): string {
-		return (string) ( parse_url( $this->uri, PHP_URL_SCHEME ) ?? '' );
+		return (string) ( wp_parse_url( $this->uri, PHP_URL_SCHEME ) ?? '' );
 	}
 
 	public function getAuthority(): string {
@@ -116,30 +116,30 @@ class WPUri implements UriInterface {
 	}
 
 	public function getUserInfo(): string {
-		$user = (string) ( parse_url( $this->uri, PHP_URL_USER ) ?? '' );
-		$pass = parse_url( $this->uri, PHP_URL_PASS );
+		$user = (string) ( wp_parse_url( $this->uri, PHP_URL_USER ) ?? '' );
+		$pass = wp_parse_url( $this->uri, PHP_URL_PASS );
 		return $user . ( $pass !== null ? ':' . $pass : '' );
 	}
 
 	public function getHost(): string {
-		return strtolower( (string) ( parse_url( $this->uri, PHP_URL_HOST ) ?? '' ) );
+		return strtolower( (string) ( wp_parse_url( $this->uri, PHP_URL_HOST ) ?? '' ) );
 	}
 
 	public function getPort(): ?int {
-		$port = parse_url( $this->uri, PHP_URL_PORT );
+		$port = wp_parse_url( $this->uri, PHP_URL_PORT );
 		return is_int( $port ) ? $port : null;
 	}
 
 	public function getPath(): string {
-		return (string) ( parse_url( $this->uri, PHP_URL_PATH ) ?? '' );
+		return (string) ( wp_parse_url( $this->uri, PHP_URL_PATH ) ?? '' );
 	}
 
 	public function getQuery(): string {
-		return (string) ( parse_url( $this->uri, PHP_URL_QUERY ) ?? '' );
+		return (string) ( wp_parse_url( $this->uri, PHP_URL_QUERY ) ?? '' );
 	}
 
 	public function getFragment(): string {
-		return (string) ( parse_url( $this->uri, PHP_URL_FRAGMENT ) ?? '' );
+		return (string) ( wp_parse_url( $this->uri, PHP_URL_FRAGMENT ) ?? '' );
 	}
 
 	public function withScheme( string $scheme ): static {
@@ -289,9 +289,10 @@ class WPServerRequest implements ServerRequestInterface {
 	 * where the raw request arrives before WP has parsed it into a WP_REST_Request.
 	 */
 	public static function from_globals(): self {
-		$method = strtoupper( $_SERVER['REQUEST_METHOD'] ?? 'GET' );
+		// phpcs:disable WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- server-set HTTP headers; unslash is a no-op and sanitization would corrupt token/header values
+		$method = strtoupper( sanitize_key( wp_unslash( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ) );
 		$scheme = is_ssl() ? 'https' : 'http';
-		$host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+		$host   = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? 'localhost' ) );
 		$uri    = $scheme . '://' . $host . ( $_SERVER['REQUEST_URI'] ?? '/' );
 
 		$headers = array();
@@ -308,8 +309,8 @@ class WPServerRequest implements ServerRequestInterface {
 			$headers['content-length'] = array( $_SERVER['CONTENT_LENGTH'] );
 		}
 
-		$raw  = (string) file_get_contents( 'php://input' );
-		$body = $_POST;
+		$raw  = (string) file_get_contents( 'php://input' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$body = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- OAuth token endpoint; authentication via PKCE code exchange, not nonce
 
 		$content_type = $_SERVER['CONTENT_TYPE'] ?? '';
 		if ( str_contains( $content_type, 'application/json' ) ) {
@@ -318,8 +319,9 @@ class WPServerRequest implements ServerRequestInterface {
 				$body = $decoded;
 			}
 		}
+		// phpcs:enable WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
-		return new self( $method, $uri, $headers, $_SERVER, $_GET, $body ?: null, $raw );
+		return new self( $method, $uri, $headers, $_SERVER, $_GET, $body ?: null, $raw ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- query params validated by OAuth server
 	}
 
 	/**
@@ -329,8 +331,9 @@ class WPServerRequest implements ServerRequestInterface {
 	public static function from_wp_request( \WP_REST_Request $request ): self {
 		$method = $request->get_method();
 		$scheme = is_ssl() ? 'https' : 'http';
-		$host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
-		$uri    = $scheme . '://' . $host . ( $_SERVER['REQUEST_URI'] ?? '/' );
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- server-set HTTP headers; sanitization would corrupt URI
+		$host = sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ?? 'localhost' ) );
+		$uri  = $scheme . '://' . $host . ( $_SERVER['REQUEST_URI'] ?? '/' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.MissingUnslash,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 
 		// WP stores header keys as lowercase with underscores; normalise to hyphens.
 		$headers = array();
@@ -435,7 +438,7 @@ class WPServerRequest implements ServerRequestInterface {
 	// --- RequestInterface -----------------------------------------------
 
 	public function getRequestTarget(): string {
-		$parts = parse_url( $this->uri );
+		$parts = wp_parse_url( $this->uri );
 		$path  = $parts['path'] ?? '/';
 		$query = isset( $parts['query'] ) ? '?' . $parts['query'] : '';
 		return $path . $query;

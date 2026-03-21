@@ -193,7 +193,7 @@ class Installer {
 			if ( version_compare( (string) $current_db_version, '1.1', '<' ) ) {
 				$resource_table = $wpdb->prefix . 'pressocampus_resource_index';
 
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- information_schema query; table name is $wpdb->prefix + literal
 				$has_ft = (int) $wpdb->get_var(
 					$wpdb->prepare(
 						'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
@@ -202,11 +202,11 @@ class Installer {
 					)
 				);
 				if ( ! $has_ft ) {
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,PluginCheck.Security.DirectDB.UnescapedDBParameter -- ALTER TABLE migration; no WP alternative; table name is safe
 					$wpdb->query( "ALTER TABLE `{$resource_table}` ADD FULLTEXT KEY excerpt_ft (excerpt)" );
 				}
 
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- information_schema query; table name is $wpdb->prefix + literal
 				$has_composite = (int) $wpdb->get_var(
 					$wpdb->prepare(
 						'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
@@ -215,7 +215,7 @@ class Installer {
 					)
 				);
 				if ( ! $has_composite ) {
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,PluginCheck.Security.DirectDB.UnescapedDBParameter -- ALTER TABLE migration; no WP alternative; table name is safe
 					$wpdb->query( "ALTER TABLE `{$resource_table}` ADD KEY user_post (user_id, post_id)" );
 				}
 			}
@@ -224,7 +224,7 @@ class Installer {
 			if ( version_compare( (string) $current_db_version, '1.2', '<' ) ) {
 				$audit_table = $wpdb->prefix . 'pressocampus_audit_log';
 
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- information_schema query; table name is $wpdb->prefix + literal
 				$has_action_idx = (int) $wpdb->get_var(
 					$wpdb->prepare(
 						'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
@@ -233,11 +233,11 @@ class Installer {
 					)
 				);
 				if ( ! $has_action_idx ) {
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,PluginCheck.Security.DirectDB.UnescapedDBParameter -- ALTER TABLE migration; no WP alternative; table name is safe
 					$wpdb->query( "ALTER TABLE `{$audit_table}` ADD KEY action (action)" );
 				}
 
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- information_schema query; table name is $wpdb->prefix + literal
 				$has_client_idx = (int) $wpdb->get_var(
 					$wpdb->prepare(
 						'SELECT COUNT(*) FROM information_schema.STATISTICS WHERE table_schema = DATABASE() AND table_name = %s AND index_name = %s',
@@ -246,7 +246,7 @@ class Installer {
 					)
 				);
 				if ( ! $has_client_idx ) {
-					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+					// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,PluginCheck.Security.DirectDB.UnescapedDBParameter -- ALTER TABLE migration; no WP alternative; table name is safe
 					$wpdb->query( "ALTER TABLE `{$audit_table}` ADD KEY oauth_client_name (oauth_client_name(100))" );
 				}
 			}

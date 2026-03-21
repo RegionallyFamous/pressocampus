@@ -92,7 +92,7 @@ class Auth {
 		// Only act on our own namespace.
 		// Also handle requests routed via the /brain pretty-URL rewrite, where
 		// REQUEST_URI is "/brain" but rest_route resolves to /pressocampus/v1/mcp.
-		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
 		$rest_route  = (string) ( $GLOBALS['wp']->query_vars['rest_route'] ?? '' );
 		if (
 			! str_contains( $request_uri, '/pressocampus/v1/' ) &&
@@ -228,11 +228,11 @@ class Auth {
 		}
 
 		if ( $header === '' ) {
-			$header = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+			$header = sanitize_text_field( wp_unslash( $_SERVER['HTTP_AUTHORIZATION'] ?? '' ) );
 		}
 
 		if ( $header === '' ) {
-			$header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+			$header = sanitize_text_field( wp_unslash( $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '' ) );
 		}
 
 		if ( $header === '' ) {

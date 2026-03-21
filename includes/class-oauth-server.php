@@ -96,7 +96,7 @@ class OAuthServer {
 	}
 
 	public function handle_well_known(): void {
-		$request_uri = $_SERVER['REQUEST_URI'] ?? '';
+		$request_uri = sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ?? '' ) );
 		$path        = (string) wp_parse_url( $request_uri, PHP_URL_PATH );
 
 		// /brain/oauth/* — OAuth endpoint bypass served directly from parse_request
@@ -162,7 +162,7 @@ class OAuthServer {
 			return; // Unknown path — let WordPress handle it normally.
 		}
 
-		$method = strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) );
+		$method = strtoupper( sanitize_key( wp_unslash( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ) );
 
 		// CORS preflight.
 		if ( $method === 'OPTIONS' ) {
@@ -177,11 +177,11 @@ class OAuthServer {
 		// Build a WP_REST_Request from PHP superglobals so the existing
 		// handler methods can be called without modification.
 		$request = new \WP_REST_Request( $method, '/' . self::REST_NAMESPACE . '/oauth/' . $endpoint );
-		$request->set_query_params( $_GET );
+		$request->set_query_params( $_GET ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- OAuth params; validated inside each handler
 
 		if ( $method === 'POST' ) {
 			$raw          = (string) file_get_contents( 'php://input' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-			$content_type = (string) ( $_SERVER['CONTENT_TYPE'] ?? '' );
+			$content_type = sanitize_mime_type( wp_unslash( $_SERVER['CONTENT_TYPE'] ?? '' ) );
 			if ( str_contains( $content_type, 'application/json' ) ) {
 				$decoded = json_decode( $raw, true );
 				if ( is_array( $decoded ) ) {
@@ -271,7 +271,7 @@ class OAuthServer {
 	public function handle_register( \WP_REST_Request $request ): \WP_REST_Response|\WP_Error {
 		// Rate-limit dynamic client registration: 10 registrations per IP per hour.
 		// This prevents automated abuse of the open registration endpoint.
-		$ip_hash   = md5( (string) ( $_SERVER['REMOTE_ADDR'] ?? 'unknown' ) );
+		$ip_hash   = md5( sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ?? 'unknown' ) ) );
 		$reg_key   = 'pc_reg_' . $ip_hash;
 		$reg_count = (int) get_transient( $reg_key );
 
@@ -876,109 +876,106 @@ class OAuthServer {
 			)
 		);
 
-		return <<<HTML
+		// phpcs:disable WordPress.Security.EscapeOutput.OutputNotEscaped -- all variables are pre-escaped above via esc_html/esc_attr/esc_url/wp_kses
+		ob_start();
+		?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{$lbl_title}</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f0f1;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-        }
-        .card {
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 12px rgba(0,0,0,.12);
-            max-width: 480px;
-            width: 100%;
-            padding: 2rem;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        .header .brain { font-size: 2.5rem; display: block; margin-bottom: .5rem; }
-        .header h1 { font-size: 1.25rem; font-weight: 700; color: #1d2327; }
-        .header h1 span { color: #2271b1; }
-        .description {
-            font-size: .9375rem;
-            color: #3c434a;
-            text-align: center;
-            margin-bottom: 1.75rem;
-            line-height: 1.6;
-        }
-        .description strong { color: #1d2327; }
-        .scope-list {
-            background: #f6f7f7;
-            border-radius: 4px;
-            padding: .75rem 1rem;
-            margin-bottom: 1.75rem;
-            font-size: .875rem;
-            color: #3c434a;
-        }
-        .scope-list ul { list-style: none; padding-left: 0; }
-        .scope-list li::before { content: '✓ '; color: #00a32a; font-weight: 700; }
-        .actions { display: flex; gap: .75rem; }
-        .btn {
-            flex: 1;
-            padding: .625rem 1rem;
-            border: none;
-            border-radius: 4px;
-            font-size: .9375rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity .15s;
-        }
-        .btn:hover { opacity: .85; }
-        .btn-allow { background: #2271b1; color: #fff; }
-        .btn-deny  { background: #fff; color: #646970; border: 1px solid #c3c4c7; }
-        .footer {
-            margin-top: 1.25rem;
-            font-size: .8125rem;
-            color: #646970;
-            text-align: center;
-        }
-    </style>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title><?php echo $lbl_title; ?></title>
+	<style>
+		*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+			background: #f0f0f1;
+			min-height: 100vh;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			padding: 1rem;
+		}
+		.card {
+			background: #fff;
+			border-radius: 8px;
+			box-shadow: 0 2px 12px rgba(0,0,0,.12);
+			max-width: 480px;
+			width: 100%;
+			padding: 2rem;
+		}
+		.header { text-align: center; margin-bottom: 1.5rem; }
+		.header .brain { font-size: 2.5rem; display: block; margin-bottom: .5rem; }
+		.header h1 { font-size: 1.25rem; font-weight: 700; color: #1d2327; }
+		.header h1 span { color: #2271b1; }
+		.description {
+			font-size: .9375rem;
+			color: #3c434a;
+			text-align: center;
+			margin-bottom: 1.75rem;
+			line-height: 1.6;
+		}
+		.description strong { color: #1d2327; }
+		.scope-list {
+			background: #f6f7f7;
+			border-radius: 4px;
+			padding: .75rem 1rem;
+			margin-bottom: 1.75rem;
+			font-size: .875rem;
+			color: #3c434a;
+		}
+		.scope-list ul { list-style: none; padding-left: 0; }
+		.scope-list li::before { content: '✓ '; color: #00a32a; font-weight: 700; }
+		.actions { display: flex; gap: .75rem; }
+		.btn {
+			flex: 1;
+			padding: .625rem 1rem;
+			border: none;
+			border-radius: 4px;
+			font-size: .9375rem;
+			font-weight: 600;
+			cursor: pointer;
+			transition: opacity .15s;
+		}
+		.btn:hover { opacity: .85; }
+		.btn-allow { background: #2271b1; color: #fff; }
+		.btn-deny  { background: #fff; color: #646970; border: 1px solid #c3c4c7; }
+		.footer {
+			margin-top: 1.25rem;
+			font-size: .8125rem;
+			color: #646970;
+			text-align: center;
+		}
+	</style>
 </head>
 <body>
-    <div class="card">
-        <div class="header">
-            <span class="brain">🧠</span>
-            <h1>{$lbl_heading}</h1>
-        </div>
-
-        <p class="description">{$lbl_description}</p>
-
-        <div class="scope-list">
-            <ul>
-                <li>{$lbl_scope_read}</li>
-                <li>{$lbl_scope_create}</li>
-                <li>{$lbl_scope_edit}</li>
-            </ul>
-        </div>
-
-        <form method="post" action="{$submit_url}">
-            {$vars['hidden_fields']}
-            <div class="actions">
-                <button type="submit" name="allow" value="1" class="btn btn-allow">{$lbl_allow}</button>
-                <button type="submit" name="deny"  value="1" class="btn btn-deny">{$lbl_deny}</button>
-            </div>
-        </form>
-
-        <p class="footer">{$lbl_signed_in}</p>
-    </div>
+	<div class="card">
+		<div class="header">
+			<span class="brain">&#x1F9E0;</span>
+			<h1><?php echo $lbl_heading; ?></h1>
+		</div>
+		<p class="description"><?php echo $lbl_description; ?></p>
+		<div class="scope-list">
+			<ul>
+				<li><?php echo $lbl_scope_read; ?></li>
+				<li><?php echo $lbl_scope_create; ?></li>
+				<li><?php echo $lbl_scope_edit; ?></li>
+			</ul>
+		</div>
+		<form method="post" action="<?php echo $submit_url; ?>">
+			<?php echo $vars['hidden_fields']; ?>
+			<div class="actions">
+				<button type="submit" name="allow" value="1" class="btn btn-allow"><?php echo $lbl_allow; ?></button>
+				<button type="submit" name="deny"  value="1" class="btn btn-deny"><?php echo $lbl_deny; ?></button>
+			</div>
+		</form>
+		<p class="footer"><?php echo $lbl_signed_in; ?></p>
+	</div>
 </body>
 </html>
-HTML;
+		<?php
+		// phpcs:enable WordPress.Security.EscapeOutput.OutputNotEscaped
+		return (string) ob_get_clean();
 	}
 
 	/**

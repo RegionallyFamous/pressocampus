@@ -181,7 +181,7 @@ CSS;
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'pressocampus' ) );
 		}
 
-		$show_welcome = isset( $_GET['welcome'] ) && wp_unslash( $_GET['welcome'] ) === '1'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$show_welcome = isset( $_GET['welcome'] ) && absint( wp_unslash( $_GET['welcome'] ) ) === 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$active_tab   = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'connect'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$user_id      = get_current_user_id();
 		$mcp_url      = home_url( '/brain' );
@@ -555,7 +555,7 @@ CSS;
 		$user_id  = get_current_user_id();
 		$per_page = 50;
         // phpcs:disable WordPress.Security.NonceVerification.Recommended
-		$page          = max( 1, (int) wp_unslash( $_GET['paged'] ?? 1 ) );
+		$page          = max( 1, absint( wp_unslash( $_GET['paged'] ?? 1 ) ) );
 		$search        = sanitize_text_field( wp_unslash( $_GET['pc_search'] ?? '' ) );
 		$agent_filter  = sanitize_text_field( wp_unslash( $_GET['pc_agent'] ?? '' ) );
 		$action_filter = sanitize_text_field( wp_unslash( $_GET['pc_action'] ?? '' ) );
@@ -817,6 +817,7 @@ CSS;
 
 		// Delete all tokens for this client first, then the client record.
 		// user_id constraint prevents an admin revoking another user's client on multi-user sites.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- custom OAuth table; no WP API alternative
 		$wpdb->delete(
 			$tokens_table,
 			array(
@@ -826,6 +827,7 @@ CSS;
 			array( '%s', '%d' )
 		);
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- custom OAuth table; no WP API alternative
 		$deleted = $wpdb->delete(
 			$clients_table,
 			array(
@@ -976,11 +978,11 @@ CSS;
 
 		$cors_raw       = sanitize_textarea_field( wp_unslash( $_POST['cors_origins'] ?? '' ) );
 		$cors_origins   = implode( "\n", array_filter( array_map( 'trim', explode( "\n", $cors_raw ) ) ) );
-		$rate_reads     = max( 1, min( 1000, (int) ( $_POST['rate_limit_reads'] ?? 60 ) ) );
-		$rate_writes    = max( 1, min( 1000, (int) ( $_POST['rate_limit_writes'] ?? 30 ) ) );
-		$max_kb         = max( 1, min( 10240, (int) ( $_POST['max_content_size'] ?? 512 ) ) );
-		$memory_limit   = max( 1, min( 100000, (int) ( $_POST['memory_count_limit'] ?? 1000 ) ) );
-		$audit_log_days = max( 1, min( 3650, (int) ( $_POST['audit_log_retention_days'] ?? 90 ) ) );
+		$rate_reads     = max( 1, min( 1000, absint( wp_unslash( $_POST['rate_limit_reads'] ?? 60 ) ) ) );
+		$rate_writes    = max( 1, min( 1000, absint( wp_unslash( $_POST['rate_limit_writes'] ?? 30 ) ) ) );
+		$max_kb         = max( 1, min( 10240, absint( wp_unslash( $_POST['max_content_size'] ?? 512 ) ) ) );
+		$memory_limit   = max( 1, min( 100000, absint( wp_unslash( $_POST['memory_count_limit'] ?? 1000 ) ) ) );
+		$audit_log_days = max( 1, min( 3650, absint( wp_unslash( $_POST['audit_log_retention_days'] ?? 90 ) ) ) );
 
 		$settings = array(
 			'cors_origins'             => $cors_origins,
@@ -1047,7 +1049,7 @@ CSS;
 		);
 
 		// 1b. Server software + .htaccess (Apache only)
-		$server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'unknown';
+		$server_software = sanitize_text_field( wp_unslash( $_SERVER['SERVER_SOFTWARE'] ?? 'unknown' ) );
 		$is_apache       = stripos( $server_software, 'apache' ) !== false;
 		$htaccess_path   = ABSPATH . '.htaccess';
 		if ( $is_apache ) {
@@ -1088,7 +1090,7 @@ CSS;
 		);
 		$missing = array();
 		foreach ( $tables as $table ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+			// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- table name is $wpdb->prefix + literal; SHOW TABLES cannot use %s placeholder
 			if ( $wpdb->get_var( "SHOW TABLES LIKE '$table'" ) !== $table ) {
 				$missing[] = $table;
 			}
@@ -1416,9 +1418,9 @@ CSS;
 
 		$table = $wpdb->prefix . 'pressocampus_oauth_clients';
 
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,PluginCheck.Security.DirectDB.UnescapedDBParameter -- $table is $wpdb->prefix + literal string; not user input
 		$rows = $wpdb->get_results(
-			$wpdb->prepare( "SELECT id, name, created_at, last_used_at AS last_used FROM {$table} WHERE user_id = %d ORDER BY created_at DESC", $user_id ),
+			$wpdb->prepare( "SELECT id, name, created_at, last_used_at AS last_used FROM {$table} WHERE user_id = %d ORDER BY created_at DESC", $user_id ), // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- custom OAuth table; cached via short TTL on the calling side
 			ARRAY_A
 		);
 

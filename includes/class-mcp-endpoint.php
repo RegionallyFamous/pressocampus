@@ -1341,7 +1341,7 @@ class MCPEndpoint {
 	}
 
 	private function set_cors_headers(): void {
-		$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+		$origin = esc_url_raw( wp_unslash( $_SERVER['HTTP_ORIGIN'] ?? '' ) );
 
 		if ( $origin !== '' ) {
 			$settings        = get_option( 'pressocampus_settings', array() );

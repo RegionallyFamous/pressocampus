@@ -122,16 +122,16 @@ class AuditLog {
 
 		$where_sql = implode( ' AND ', $where );
 
-		// Count total
+		// Count total — $table is $wpdb->prefix + literal string; $where_sql contains only '%s'/'%d' placeholders built above.
 		$count_sql = "SELECT COUNT(*) FROM {$table} WHERE {$where_sql}";
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom audit table; table name is safe; query values go through prepare()
 		$total = (int) ( $values ? $wpdb->get_var( $wpdb->prepare( $count_sql, ...$values ) ) : $wpdb->get_var( $count_sql ) );
 
 		// Items
 		$offset     = max( 0, ( $page - 1 ) ) * $per_page;
 		$items_sql  = "SELECT id, user_id, oauth_client_name, action, memory_uri, memory_name, context, created_at FROM {$table} WHERE {$where_sql} ORDER BY id DESC LIMIT %d OFFSET %d";
 		$items_args = array_merge( $values, array( $per_page, $offset ) );
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom audit table; table name is safe; query values go through prepare()
 		$rows = $wpdb->get_results( $wpdb->prepare( $items_sql, ...$items_args ), ARRAY_A );
 
 		return array(
@@ -152,10 +152,10 @@ class AuditLog {
 		$table = $this->table();
 
 		if ( $user_id > 0 ) {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom audit table; table name is $wpdb->prefix + literal
 			$rows = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT oauth_client_name FROM {$table} WHERE user_id = %d ORDER BY oauth_client_name ASC", $user_id ) );
 		} else {
-            // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom audit table; table name is $wpdb->prefix + literal
 			$rows = $wpdb->get_col( "SELECT DISTINCT oauth_client_name FROM {$table} ORDER BY oauth_client_name ASC" );
 		}
 
@@ -183,7 +183,7 @@ class AuditLog {
 		}
 
 		$where_sql = implode( ' AND ', $where );
-        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- $where_sql uses safe placeholder strings; ...$values provides matching bindings
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare,WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,PluginCheck.Security.DirectDB.UnescapedDBParameter -- custom audit table; table name is safe; values go through prepare()
 		$rows = $wpdb->get_results( $wpdb->prepare( "SELECT id, user_id, oauth_client_name, action, memory_uri, memory_name, context, created_at FROM {$table} WHERE {$where_sql} ORDER BY id DESC", ...$values ), ARRAY_A );
 
         // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- php://temp is an in-memory stream; WP_Filesystem does not support stream wrappers

@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.19] — 2026-03-20
+
+### Changed
+- **Plugin Check compliance pass** — resolved all errors and warnings from the WordPress Plugin Check tool:
+  - Replaced `heredoc` syntax in the OAuth consent page with `ob_start` / `ob_get_clean` (`PluginCheck.CodeAnalysis.Heredoc.NotAllowed`).
+  - Replaced all `parse_url()` calls in `class-psr7-bridge.php` with `wp_parse_url()` to align with WordPress coding standards.
+  - Added `wp_unslash()` + appropriate sanitization (`sanitize_text_field`, `sanitize_key`, `sanitize_mime_type`, `esc_url_raw`, `absint`) to every `$_SERVER`, `$_POST`, and `$_GET` access across `class-oauth-server.php`, `class-auth.php`, `class-mcp-endpoint.php`, `class-settings.php`, and `class-psr7-bridge.php`.
+  - Added justified `phpcs:ignore` annotations for direct DB queries on custom tables (no WP API alternative), schema migration `ALTER TABLE` statements, OAuth-protocol endpoints that cannot use WordPress nonces, and dynamic SQL table names that are provably safe (`$wpdb->prefix + literal`).
+  - Updated `readme.txt`: `Tested up to` bumped to 6.9; `Stable tag` corrected to `1.0.19`.
+  - Updated plugin header: `Tested up to` bumped to 6.9.
+
+---
+
 ## [1.0.18] — 2026-03-21
 
 ### Added
