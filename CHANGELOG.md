@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.11] — 2026-03-21
+
+### Fixed
+
+- **Plain-permalink sites now get a clear error** instead of a silent 404 on `/brain` and all OAuth REST endpoints. The settings page shows a prominent notice with a direct link to Settings → Permalinks when plain permalinks are detected. The Diagnostics tab also reports this as the first (blocking) check.
+
+---
+
 ## [1.0.10] — 2026-03-21
 
 ### Added

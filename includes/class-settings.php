@@ -210,14 +210,29 @@ CSS;
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Pressocampus', 'pressocampus' ); ?></h1>
 
-			<?php if ( $show_welcome ) : ?>
-			<div class="notice notice-success">
-				<p>
-					<strong><?php esc_html_e( 'Your memories are online.', 'pressocampus' ); ?></strong>
-					<?php esc_html_e( 'Pressocampus is active. Copy your Brain URL below and paste it into your AI client to connect.', 'pressocampus' ); ?>
-				</p>
-			</div>
-			<?php endif; ?>
+		<?php if ( $show_welcome ) : ?>
+		<div class="notice notice-success">
+			<p>
+				<strong><?php esc_html_e( 'Your memories are online.', 'pressocampus' ); ?></strong>
+				<?php esc_html_e( 'Pressocampus is active. Copy your Brain URL below and paste it into your AI client to connect.', 'pressocampus' ); ?>
+			</p>
+		</div>
+		<?php endif; ?>
+
+		<?php if ( get_option( 'permalink_structure', '' ) === '' ) : ?>
+		<div class="notice notice-error">
+			<p>
+				<strong><?php esc_html_e( 'Action required: Enable pretty permalinks.', 'pressocampus' ); ?></strong>
+				<?php
+				printf(
+					/* translators: %s: URL to the Permalinks settings page */
+					esc_html__( 'Pressocampus requires pretty permalinks to serve the /brain URL and OAuth endpoints. Go to %s, choose "Post name", and save.', 'pressocampus' ),
+					'<a href="' . esc_url( admin_url( 'options-permalink.php' ) ) . '">' . esc_html__( 'Settings → Permalinks', 'pressocampus' ) . '</a>'
+				);
+				?>
+			</p>
+		</div>
+		<?php endif; ?>
 
 			<nav class="nav-tab-wrapper" aria-label="<?php esc_attr_e( 'Pressocampus settings tabs', 'pressocampus' ); ?>">
 				<a href="#" class="nav-tab <?php echo $active_tab === 'connect' ? 'nav-tab-active' : ''; ?>" data-tab="connect"><?php esc_html_e( 'Connect', 'pressocampus' ); ?></a>
@@ -1025,6 +1040,17 @@ CSS;
 
 		global $wpdb;
 		$checks = array();
+
+		// 0. Pretty permalinks — everything else depends on this
+		$permalink_structure   = (string) get_option( 'permalink_structure', '' );
+		$has_pretty_permalinks = $permalink_structure !== '';
+		$checks[]              = array(
+			'label'  => 'Pretty permalinks',
+			'pass'   => $has_pretty_permalinks,
+			'detail' => $has_pretty_permalinks
+				? 'Structure: ' . $permalink_structure
+				: 'PLAIN permalinks — go to Settings → Permalinks, choose "Post name", and save. This is required for /brain and the REST API to work.',
+		);
 
 		// 1. PHP version
 		$php_ok   = version_compare( PHP_VERSION, '8.3', '>=' );
