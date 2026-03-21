@@ -66,7 +66,12 @@ class WPClientRepository implements ClientRepositoryInterface {
 			if ( $clientSecret === null ) {
 				return false;
 			}
-			if ( ! hash_equals( $row->secret, $clientSecret ) ) {
+			// Support both bcrypt hashes (new) and legacy plaintext secrets (pre-v1.0.25).
+			if ( str_starts_with( $row->secret, '$2' ) ) {
+				if ( ! password_verify( $clientSecret, $row->secret ) ) {
+					return false;
+				}
+			} elseif ( ! hash_equals( $row->secret, $clientSecret ) ) {
 				return false;
 			}
 		}
@@ -128,15 +133,16 @@ class WPClientRepository implements ClientRepositoryInterface {
 	): array {
 		global $wpdb;
 
-		$client_id     = uniqid( 'prc_', true );
-		$client_secret = wp_generate_password( 40, false );
+		$client_id          = 'prc_' . bin2hex( random_bytes( 16 ) );
+		$client_secret      = wp_generate_password( 40, false );
+		$client_secret_hash = password_hash( $client_secret, PASSWORD_BCRYPT );
 
 		$wpdb->insert(
 			$wpdb->prefix . 'pressocampus_oauth_clients',
 			array(
 				'id'              => $client_id,
 				'name'            => $name,
-				'secret'          => $client_secret,
+				'secret'          => $client_secret_hash,
 				'redirect_uris'   => wp_json_encode( $redirect_uris ),
 				'scopes'          => PRESSOCAMPUS_SCOPE,
 				'is_confidential' => $is_confidential ? 1 : 0,

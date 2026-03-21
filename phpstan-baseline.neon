@@ -171,7 +171,7 @@ parameters:
 		-
 			message: '#^Unsafe access to private property Pressocampus\\Auth\:\:\$current_user_id through static\:\:\.$#'
 			identifier: staticClassAccess.privateProperty
-			count: 5
+			count: 6
 			path: includes/class-auth.php
 
 		-
@@ -278,6 +278,18 @@ parameters:
 
 		-
 			message: '#^Method Pressocampus\\MCPEndpoint\:\:rpc_error\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: includes/class-mcp-endpoint.php
+
+		-
+			message: '#^Method Pressocampus\\MCPEndpoint\:\:write_rate_limit_error\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: includes/class-mcp-endpoint.php
+
+		-
+			message: '#^Method Pressocampus\\MCPEndpoint\:\:read_rate_limit_error\(\) return type has no value type specified in iterable type array\.$#'
 			identifier: missingType.iterableValue
 			count: 1
 			path: includes/class-mcp-endpoint.php

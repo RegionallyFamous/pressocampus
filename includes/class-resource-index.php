@@ -304,6 +304,14 @@ class ResourceIndex {
 
 		$post_ids = $this->get_reverse_links( $old_uri );
 
+		if ( empty( $post_ids ) ) {
+			return;
+		}
+
+		// Batch-prime the postmeta cache so the get_post_meta() calls inside
+		// the loop below don't each fire an individual DB query.
+		update_postmeta_cache( $post_ids );
+
 		foreach ( $post_ids as $post_id ) {
 			$meta = (string) get_post_meta( $post_id, '_pressocampus_related', true );
 			if ( $meta === '' ) {
@@ -358,19 +366,24 @@ class ResourceIndex {
 			return;
 		}
 
-		// Prevent duplicate concurrent rebuilds.
-		$lock_key = 'pressocampus_rebuild_lock_' . $user_id;
-		if ( get_transient( $lock_key ) ) {
+		global $wpdb;
+
+		// Use a MySQL advisory lock so concurrent requests don't trigger duplicate rebuilds.
+		$lock_name = 'pc_rebuild_' . $user_id;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$acquired = (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $lock_name ) );
+
+		if ( ! $acquired ) {
 			return;
 		}
-		set_transient( $lock_key, 1, 30 );
 
 		try {
 			$soul->rebuild_index( $user_id, $host );
 			// Only clear the dirty flag after a successful rebuild.
 			delete_transient( 'pressocampus_index_dirty_' . $user_id );
 		} finally {
-			delete_transient( $lock_key );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
 		}
 	}
 
@@ -388,16 +401,27 @@ class ResourceIndex {
 			return (array) $cached;
 		}
 
-		$terms = get_terms(
-			array(
-				'taxonomy'   => PRESSOCAMPUS_TAXONOMY,
-				'hide_empty' => true,
-				'object_ids' => $this->get_user_post_ids( $user_id ),
-				'fields'     => 'slugs',
+		global $wpdb;
+
+		// Single JOIN query avoids the two-step: get_user_post_ids() + get_terms(object_ids).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$slugs = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT DISTINCT t.slug
+				   FROM {$wpdb->term_taxonomy} tt
+				   JOIN {$wpdb->terms} t             ON t.term_id    = tt.term_id
+				   JOIN {$wpdb->term_relationships} tr ON tr.term_taxonomy_id = tt.term_taxonomy_id
+				   JOIN {$this->table()} i            ON i.post_id   = tr.object_id
+				  WHERE i.user_id    = %d
+				    AND tt.taxonomy  = %s
+				    AND tt.count     > 0
+				  ORDER BY t.slug ASC",
+				$user_id,
+				PRESSOCAMPUS_TAXONOMY
 			)
 		);
 
-		$result = ( is_wp_error( $terms ) || ! is_array( $terms ) ) ? array() : $terms;
+		$result = is_array( $slugs ) ? $slugs : array();
 
 		wp_cache_set( $cache_key, $result, 'pressocampus', 300 );
 
@@ -437,23 +461,5 @@ class ResourceIndex {
 		wp_cache_set( $cache_key, (int) $count, 'pressocampus', 60 );
 
 		return (int) $count;
-	}
-
-	/**
-	 * Return all post IDs for a given user (used internally for taxonomy lookups).
-	 *
-	 * @return int[]
-	 */
-	private function get_user_post_ids( int $user_id ): array {
-		global $wpdb;
-
-		$ids = $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT post_id FROM {$this->table()} WHERE user_id = %d",
-				$user_id
-			)
-		);
-
-		return array_map( 'intval', $ids );
 	}
 }

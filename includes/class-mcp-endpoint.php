@@ -221,6 +221,12 @@ class MCPEndpoint {
 			? $requested_version
 			: self::MCP_VERSION;
 
+		// Initialize may trigger a DB write (Soul::create) and multiple reads;
+		// rate-limit it like any other read operation.
+		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
+			return $this->rpc_error( -32029, 'Rate limit exceeded — too many initialize requests. Please wait a moment.' );
+		}
+
 		$user_id     = Auth::get_current_user_id();
 		$client_name = Auth::get_current_client_name();
 		$host        = Auth::get_site_host();
@@ -297,8 +303,7 @@ class MCPEndpoint {
 		$host    = Auth::get_site_host();
 
 		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
-			$reads_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_reads'] ?? 60 );
-			return $this->rpc_error( -32008, "Rate limit exceeded for reads ({$reads_per_min}/min)" );
+			return $this->rpc_error( -32008, "Rate limit exceeded for reads ({$this->get_read_rate_limit()}/min)" );
 		}
 
 		// Cursor-based pagination: cursor is a base64-encoded 1-based page number.
@@ -460,8 +465,7 @@ class MCPEndpoint {
 		}
 
 		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
-			$reads_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_reads'] ?? 60 );
-			return $this->rpc_error( -32008, "Rate limit exceeded for reads ({$reads_per_min}/min)" );
+			return $this->rpc_error( -32008, "Rate limit exceeded for reads ({$this->get_read_rate_limit()}/min)" );
 		}
 
 		// Virtual briefing resource — generated on demand, no backing post.
@@ -807,8 +811,7 @@ class MCPEndpoint {
 
 	private function tool_remember( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
-			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min). Please wait a moment and try again." );
+			return $this->write_rate_limit_error();
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -952,8 +955,7 @@ class MCPEndpoint {
 
 	private function tool_forget( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
-			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min). Please wait a moment." );
+			return $this->write_rate_limit_error();
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -977,14 +979,21 @@ class MCPEndpoint {
 		$post_id    = (int) $index_entry['post_id'];
 		$post_title = (string) get_the_title( $post_id );
 
-		$this->resource_index->rewrite_related_uri( $uri, '' );
-
 		$revisions = wp_get_post_revisions( $post_id );
 		foreach ( $revisions as $revision ) {
 			wp_delete_post_revision( $revision->ID );
 		}
 
-		wp_delete_post( $post_id, true );
+		$deleted = wp_delete_post( $post_id, true );
+		if ( ! $deleted ) {
+			// Post couldn't be deleted (doesn't exist or deletion was blocked).
+			// Roll back the related-URI rewrites would be ideal but is not possible here;
+			// at minimum, do NOT remove the index row so the memory remains findable.
+			return $this->tool_error( 'delete_failed', 'Memory could not be deleted. The post may have already been removed.' );
+		}
+
+		// Only rewrite back-references after confirmed deletion.
+		$this->resource_index->rewrite_related_uri( $uri, '' );
 		$this->resource_index->delete_by_post_id( $post_id );
 
 		$this->audit_log->record( 'forget', $user_id, Auth::get_current_client_name(), $uri, $post_title, $context );
@@ -1003,8 +1012,7 @@ class MCPEndpoint {
 
 	private function tool_update_memory( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
-			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min)." );
+			return $this->write_rate_limit_error();
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -1067,8 +1075,7 @@ class MCPEndpoint {
 
 	private function tool_update_soul( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
-			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min)." );
+			return $this->write_rate_limit_error();
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -1081,7 +1088,11 @@ class MCPEndpoint {
 			return $this->tool_error( 'missing_content', 'Content is required.' );
 		}
 
-		$result = $this->soul->update( $user_id, $content, $host, $etag );
+		try {
+			$result = $this->soul->update( $user_id, $content, $host, $etag );
+		} catch ( \RuntimeException $e ) {
+			return $this->tool_error( 'soul_locked', $e->getMessage() );
+		}
 
 		if ( $result['error'] ?? false ) {
 			return $this->tool_error(
@@ -1104,8 +1115,7 @@ class MCPEndpoint {
 
 	private function tool_update_soul_section( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
-			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min)." );
+			return $this->write_rate_limit_error();
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -1121,7 +1131,11 @@ class MCPEndpoint {
 			return $this->tool_error( 'missing_content', 'Content is required.' );
 		}
 
-		$result = $this->soul->update_section( $user_id, $section, $content, $host );
+		try {
+			$result = $this->soul->update_section( $user_id, $section, $content, $host );
+		} catch ( \RuntimeException $e ) {
+			return $this->tool_error( 'soul_locked', $e->getMessage() );
+		}
 
 		if ( $result['error'] ?? false ) {
 			return $this->tool_error(
@@ -1144,7 +1158,7 @@ class MCPEndpoint {
 
 	private function tool_search_memory( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
-			return $this->tool_error( 'rate_limit_exceeded', 'Read rate limit reached (60/min).' );
+			return $this->read_rate_limit_error();
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -1171,8 +1185,7 @@ class MCPEndpoint {
 
 	private function tool_list_memories( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
-			$reads_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_reads'] ?? 60 );
-			return $this->tool_error( 'rate_limit_exceeded', "Read rate limit reached ({$reads_per_min}/min)." );
+			return $this->read_rate_limit_error();
 		}
 
 		$user_id = Auth::get_current_user_id();
@@ -1269,8 +1282,7 @@ class MCPEndpoint {
 
 	private function tool_tag_memory( array $args ): array {
 		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
-			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
-			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min)." );
+			return $this->write_rate_limit_error();
 		}
 
 		$user_id  = Auth::get_current_user_id();
@@ -1320,6 +1332,24 @@ class MCPEndpoint {
 		}
 
 		return $this->tool_success( $result );
+	}
+
+	private function get_write_rate_limit(): int {
+		return (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
+	}
+
+	private function get_read_rate_limit(): int {
+		return (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_reads'] ?? 60 );
+	}
+
+	private function write_rate_limit_error(): array {
+		$n = $this->get_write_rate_limit();
+		return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$n}/min). Please wait a moment and try again." );
+	}
+
+	private function read_rate_limit_error(): array {
+		$n = $this->get_read_rate_limit();
+		return $this->tool_error( 'rate_limit_exceeded', "Read rate limit reached ({$n}/min). Please wait a moment and try again." );
 	}
 
 	private function tool_success( array $data ): array {

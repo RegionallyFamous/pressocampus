@@ -320,59 +320,62 @@ SOUL;
 	 *                           or if wp_insert_post returns a WP_Error.
 	 */
 	public function create( int $user_id, string $host ): \WP_Post {
-		$lock_key = 'pressocampus_creating_soul_' . $user_id;
+		global $wpdb;
 
-		// If another request is already creating the soul, throw immediately so the
-		// caller can return a retryable JSON-RPC error rather than blocking a worker.
-		if ( get_transient( $lock_key ) ) {
+		// Use a MySQL advisory lock (GET_LOCK) for atomic cross-process locking.
+		// timeout=0 means "return immediately if already held by another connection."
+		$lock_name = 'pc_soul_' . $user_id;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$acquired = (bool) $wpdb->get_var( $wpdb->prepare( 'SELECT GET_LOCK(%s, 0)', $lock_name ) );
+
+		if ( ! $acquired ) {
 			throw new \RuntimeException( 'Soul initialization in progress — please retry in a moment.' );
 		}
 
-		// Another process may have created the soul while this request was handling
-		// an earlier step; return it rather than creating a duplicate.
-		$existing = $this->get_post( $user_id );
-		if ( $existing !== null ) {
-			return $existing;
+		try {
+			// Another connection may have completed soul creation while we waited.
+			$existing = $this->get_post( $user_id );
+			if ( $existing !== null ) {
+				return $existing;
+			}
+
+			$uri     = self::get_uri( $host );
+			$content = self::get_starter_template();
+
+			$post_id = wp_insert_post(
+				array(
+					'post_type'    => PRESSOCAMPUS_CPT,
+					'post_status'  => 'publish',
+					'post_author'  => $user_id,
+					'post_title'   => __( 'My Soul', 'pressocampus' ),
+					'post_content' => $content,
+				),
+				true
+			);
+
+			if ( is_wp_error( $post_id ) ) {
+				// phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+				throw new \RuntimeException( $post_id->get_error_message() );
+			}
+
+			add_post_meta( $post_id, '_pressocampus_uri', $uri, true );
+			add_post_meta( $post_id, '_pressocampus_mime_type', 'text/markdown', true );
+			add_post_meta( $post_id, '_pressocampus_schema_version', '1.0', true );
+			add_post_meta( $post_id, '_pressocampus_annotation_priority', 'critical', true );
+			add_post_meta( $post_id, '_pressocampus_confidence', 'high', true );
+
+			$this->resource_index->upsert( $post_id, $uri, $user_id, $content );
+
+			$post = get_post( $post_id );
+			if ( ! $post instanceof \WP_Post ) {
+				throw new \RuntimeException( 'Failed to retrieve newly created soul post.' );
+			}
+
+			return $post;
+		} finally {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$wpdb->query( $wpdb->prepare( 'SELECT RELEASE_LOCK(%s)', $lock_name ) );
 		}
-
-		set_transient( $lock_key, 1, 15 ); // 15 s max lock
-
-		$uri     = self::get_uri( $host );
-		$content = self::get_starter_template();
-
-		$post_id = wp_insert_post(
-			array(
-				'post_type'    => PRESSOCAMPUS_CPT,
-				'post_status'  => 'publish',
-				'post_author'  => $user_id,
-				'post_title'   => __( 'My Soul', 'pressocampus' ),
-				'post_content' => $content,
-			),
-			true
-		);
-
-		if ( is_wp_error( $post_id ) ) {
-			delete_transient( $lock_key );
-            // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
-			throw new \RuntimeException( $post_id->get_error_message() );
-		}
-
-		add_post_meta( $post_id, '_pressocampus_uri', $uri, true );
-		add_post_meta( $post_id, '_pressocampus_mime_type', 'text/markdown', true );
-		add_post_meta( $post_id, '_pressocampus_schema_version', '1.0', true );
-		add_post_meta( $post_id, '_pressocampus_annotation_priority', 'critical', true );
-		add_post_meta( $post_id, '_pressocampus_confidence', 'high', true );
-
-		$this->resource_index->upsert( $post_id, $uri, $user_id, $content );
-
-		$post = get_post( $post_id );
-		if ( ! $post instanceof \WP_Post ) {
-			delete_transient( $lock_key );
-			throw new \RuntimeException( 'Failed to retrieve newly created soul post.' );
-		}
-
-		delete_transient( $lock_key );
-		return $post;
 	}
 
 	/**
@@ -515,41 +518,79 @@ SOUL;
 		);
 		$lines[] = '';
 
-		$all_q = new \WP_Query(
-			array(
-				'post_type'      => PRESSOCAMPUS_CPT,
-				'post_status'    => 'publish',
-				'author'         => $user_id,
-				'posts_per_page' => -1,
-				'no_found_rows'  => true,
-				'meta_query'     => array(
-					array(
-						'key'     => '_pressocampus_uri',
-						'compare' => 'EXISTS',
-					),
-				),
-			)
-		);
+		// Fetch only the columns needed for the index rather than loading full
+		// WP_Post objects for every memory (avoids posts_per_page=-1 memory spike).
+		global $wpdb;
+		$ri_table   = $wpdb->prefix . 'pressocampus_resource_index';
+		$batch_size = 200;
+		$offset     = 0;
+		$all_rows   = array();
 
-		// Prime postmeta cache to avoid get_post_meta() N+1 queries below.
-		if ( ! empty( $all_q->posts ) ) {
-			update_postmeta_cache( array_map( fn( \WP_Post $p ): int => $p->ID, $all_q->posts ) );
+		do {
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$rows         = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT p.ID, p.post_title, p.post_modified_gmt, i.uri
+					   FROM {$ri_table} i
+					   JOIN {$wpdb->posts} p ON p.ID = i.post_id
+					  WHERE i.user_id      = %d
+					    AND p.post_status  = 'publish'
+					    AND p.post_type    = %s
+					  ORDER BY p.ID ASC
+					  LIMIT %d OFFSET %d",
+					$user_id,
+					PRESSOCAMPUS_CPT,
+					$batch_size,
+					$offset
+				),
+				ARRAY_A
+			);
+			$rows_fetched = count( $rows );
+			$all_rows     = array_merge( $all_rows, $rows ?: array() );
+			$offset      += $batch_size;
+		} while ( $rows_fetched === $batch_size );
+
+		// Map post IDs → term slugs in one direct query to avoid the
+		// WP_Term::$object_id dynamic property that only exists with
+		// the 'all_with_object_id' fields option.
+		$post_ids      = array_column( $all_rows, 'ID' );
+		$terms_by_post = array();
+		if ( ! empty( $post_ids ) ) {
+			$placeholders = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			$term_rows = $wpdb->get_results(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$wpdb->prepare(
+					"SELECT tr.object_id, t.slug
+					   FROM {$wpdb->term_relationships} tr
+					   JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+					   JOIN {$wpdb->terms} t           ON t.term_id          = tt.term_id
+					  WHERE tr.object_id IN ({$placeholders})
+					    AND tt.taxonomy  = %s",
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					array_merge( $post_ids, array( PRESSOCAMPUS_TAXONOMY ) )
+				)
+			);
+			if ( is_array( $term_rows ) ) {
+				foreach ( $term_rows as $term_row ) {
+					$terms_by_post[ (int) $term_row->object_id ][] = (string) $term_row->slug;
+				}
+			}
 		}
 
 		$grouped = array();
-		foreach ( $all_q->posts as $memory ) {
-			$terms = get_the_terms( $memory->ID, PRESSOCAMPUS_TAXONOMY );
-			$slugs = is_array( $terms ) ? array_column( $terms, 'slug' ) : array();
+		foreach ( $all_rows as $row ) {
+			$slugs = $terms_by_post[ (int) $row['ID'] ] ?? array();
 			foreach ( $slugs as $slug ) {
-				$grouped[ $slug ][] = $memory;
+				$grouped[ $slug ][] = $row;
 			}
 		}
 
 		foreach ( $groups as $group_slug ) {
 			$term        = get_term_by( 'slug', $group_slug, PRESSOCAMPUS_TAXONOMY );
 			$group_label = ( $term instanceof \WP_Term ) ? $term->name : $group_slug;
-			$group_posts = $grouped[ $group_slug ] ?? array();
-			$group_count = count( $group_posts );
+			$group_rows  = $grouped[ $group_slug ] ?? array();
+			$group_count = count( $group_rows );
 
 			$lines[] = sprintf(
 				'## %s (%d %s)',
@@ -558,11 +599,10 @@ SOUL;
 				_n( 'memory', 'memories', $group_count, 'pressocampus' )
 			);
 
-			foreach ( $group_posts as $memory ) {
-				$uri     = (string) get_post_meta( $memory->ID, '_pressocampus_uri', true );
-				$ts      = (int) strtotime( $memory->post_modified ) ?: time();
+			foreach ( $group_rows as $row ) {
+				$ts      = (int) strtotime( $row['post_modified_gmt'] ) ?: time();
 				$age     = human_time_diff( $ts, time() );
-				$lines[] = sprintf( '- %s — %s — updated %s ago', $memory->post_title, $uri, $age );
+				$lines[] = sprintf( '- %s — %s — updated %s ago', $row['post_title'], $row['uri'], $age );
 			}
 
 			$lines[] = '';

@@ -176,7 +176,13 @@ class Auth {
 	public function check_rate_limit( string $type ): bool {
 		$token_id = static::$current_token_id;
 		if ( $token_id === '' ) {
-			// No authenticated token — allow (other auth layers or public endpoints).
+			// User is authenticated but somehow lacks a token ID — this should
+			// not happen in normal operation. Deny rather than silently bypassing
+			// all throttling, which could mask a broken auth injection path.
+			if ( static::$current_user_id > 0 ) {
+				return false;
+			}
+			// No authenticated session at all — allow (public endpoints, test harness).
 			return true;
 		}
 
