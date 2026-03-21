@@ -82,9 +82,10 @@
 	};
 
 	// Test connection.
-	window.pcTestConnection = function () {
-		var btn    = document.getElementById( 'pc-test-btn' );
-		var result = document.getElementById( 'pc-test-result' );
+	// btnEl / resultEl are optional — passed by the Quick Start card to target its own elements.
+	window.pcTestConnection = function ( btnEl, resultEl ) {
+		var btn    = btnEl    || document.getElementById( 'pc-test-btn' );
+		var result = resultEl || document.getElementById( 'pc-test-result' );
 		btn.disabled = true;
 		btn.textContent = cfg.i18n.testing;
 		result.textContent = '';

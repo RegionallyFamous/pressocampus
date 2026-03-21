@@ -170,6 +170,25 @@ class Settings {
 .pc-dropdown-item { display: block; width: 100%; background: none; border: none; padding: 8px 14px; text-align: left; font-size: 13px; cursor: pointer; color: #2c3338; white-space: nowrap; }
 .pc-dropdown-item:hover { background: #f0f6fb; color: #2271b1; }
 #pc-toast { position: fixed; bottom: 24px; right: 24px; background: #2c3338; color: #fff; padding: 10px 18px; border-radius: 4px; font-size: 13px; z-index: 9999; display: none; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+/* Quick Start onboarding card */
+.pc-quickstart { background: #f6f7f7; border: 1px solid #c3c4c7; border-radius: 4px; margin: 12px 0 20px; padding: 20px 24px; }
+.pc-qs-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.pc-qs-header strong { font-size: 14px; }
+.pc-qs-dismiss { font-size: 20px; line-height: 1; text-decoration: none; color: #787c82; }
+.pc-qs-dismiss:hover { color: #2c3338; }
+.pc-qs-steps { display: flex; flex-direction: column; gap: 18px; }
+.pc-qs-step { display: flex; gap: 12px; align-items: flex-start; }
+.pc-qs-num { width: 22px; height: 22px; background: #2271b1; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.pc-qs-step > div { flex: 1; min-width: 0; }
+.pc-qs-step > div > p { margin: 0 0 8px; }
+.pc-qs-copyrow { display: flex; align-items: center; gap: 8px; }
+.pc-qs-code { flex: 1; min-width: 0; display: block; padding: 5px 8px; background: #fff; border: 1px solid #c3c4c7; border-radius: 3px; font-family: monospace; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-qs-pre { flex: 1; min-width: 0; margin: 0; padding: 8px 10px; background: #fff; border: 1px solid #c3c4c7; border-radius: 3px; font-size: 12px; overflow-x: auto; white-space: pre; }
+.pc-qs-clients { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; }
+.pc-qs-client-btn.active { background: #2271b1; border-color: #2271b1; color: #fff; }
+.pc-qs-client-btn.active:hover { background: #135e96; border-color: #135e96; }
+.pc-qs-client-panel { display: none; }
+.pc-qs-client-panel.active { display: block; }
 </style>
 CSS;
 	}
@@ -204,6 +223,30 @@ CSS;
 		// Connected apps
 		$clients = $this->get_oauth_clients( $user_id );
 
+		// Config display strings for the Quick Start card (shown only on first activation).
+		$qs_claude_config = (string) wp_json_encode(
+			array(
+				'mcpServers' => array(
+					'pressocampus' => array(
+						'command' => 'npx',
+						'args'    => array( '-y', 'mcp-remote', $mcp_url ),
+					),
+				),
+			),
+			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+		);
+		$qs_cursor_config = (string) wp_json_encode(
+			array(
+				'mcpServers' => array(
+					'pressocampus' => array(
+						'url'  => $mcp_url,
+						'type' => 'http',
+					),
+				),
+			),
+			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+		);
+
 		echo $this->shared_styles(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 
 		?>
@@ -211,13 +254,99 @@ CSS;
 			<h1><?php esc_html_e( 'Pressocampus', 'pressocampus' ); ?></h1>
 
 		<?php if ( $show_welcome ) : ?>
-		<div class="notice notice-success">
-			<p>
-				<strong><?php esc_html_e( 'Your brain is live. Your memories are yours — forever.', 'pressocampus' ); ?></strong>
-				<?php esc_html_e( 'WordPress has been running since 2003 and isn\'t going anywhere. Neither are your memories. Copy your Brain URL below and connect your first AI.', 'pressocampus' ); ?>
-			</p>
+	<div class="pc-quickstart">
+		<div class="pc-qs-header">
+			<strong><?php esc_html_e( 'Quick Start — Connect your AI client', 'pressocampus' ); ?></strong>
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=pressocampus' ) ); ?>" class="pc-qs-dismiss" aria-label="<?php esc_attr_e( 'Dismiss', 'pressocampus' ); ?>">&#x2715;</a>
 		</div>
-		<?php endif; ?>
+
+		<div class="pc-qs-steps">
+
+			<div class="pc-qs-step">
+				<span class="pc-qs-num">1</span>
+				<div>
+					<p><strong><?php esc_html_e( 'Copy your Brain URL', 'pressocampus' ); ?></strong></p>
+					<div class="pc-qs-copyrow">
+						<code class="pc-qs-code"><?php echo esc_html( $mcp_url ); ?></code>
+						<button class="button" onclick="pcCopy(<?php echo wp_json_encode( $mcp_url ); ?>, this)"><?php esc_html_e( 'Copy', 'pressocampus' ); ?></button>
+					</div>
+				</div>
+			</div>
+
+			<div class="pc-qs-step">
+				<span class="pc-qs-num">2</span>
+				<div>
+					<p><strong><?php esc_html_e( 'Add to your AI client', 'pressocampus' ); ?></strong></p>
+					<div class="pc-qs-clients">
+						<button class="button pc-qs-client-btn active" data-client="claude" onclick="pcQsClient(this)"><?php esc_html_e( 'Claude Desktop', 'pressocampus' ); ?></button>
+						<button class="button pc-qs-client-btn" data-client="cursor" onclick="pcQsClient(this)"><?php esc_html_e( 'Cursor / Windsurf', 'pressocampus' ); ?></button>
+						<button class="button pc-qs-client-btn" data-client="other" onclick="pcQsClient(this)"><?php esc_html_e( 'Other MCP', 'pressocampus' ); ?></button>
+					</div>
+
+					<div class="pc-qs-client-panel active" data-client="claude">
+						<p class="description">
+							<?php
+							printf(
+								/* translators: %s: file path */
+								wp_kses( __( 'Merge into %s', 'pressocampus' ), array( 'code' => array() ) ),
+								'<code>~/Library/Application Support/Claude/claude_desktop_config.json</code>'
+							);
+							?>
+						</p>
+						<div class="pc-qs-copyrow">
+							<pre class="pc-qs-pre"><?php echo esc_html( $qs_claude_config ); ?></pre>
+							<button class="button" onclick="pcCopyClaudeConfig()"><?php esc_html_e( 'Copy', 'pressocampus' ); ?></button>
+						</div>
+					</div>
+
+					<div class="pc-qs-client-panel" data-client="cursor">
+						<p class="description">
+							<?php
+							printf(
+								/* translators: %s: file path */
+								wp_kses( __( 'Merge into %s in your project root', 'pressocampus' ), array( 'code' => array() ) ),
+								'<code>.cursor/mcp.json</code>'
+							);
+							?>
+						</p>
+						<div class="pc-qs-copyrow">
+							<pre class="pc-qs-pre"><?php echo esc_html( $qs_cursor_config ); ?></pre>
+							<button class="button" onclick="pcCopyCursorConfig()"><?php esc_html_e( 'Copy', 'pressocampus' ); ?></button>
+						</div>
+					</div>
+
+					<div class="pc-qs-client-panel" data-client="other">
+						<p class="description"><?php esc_html_e( 'Any MCP-compatible client — paste the Brain URL into its server configuration:', 'pressocampus' ); ?></p>
+						<div class="pc-qs-copyrow">
+							<code class="pc-qs-code"><?php echo esc_html( $mcp_url ); ?></code>
+							<button class="button" onclick="pcCopy(<?php echo wp_json_encode( $mcp_url ); ?>, this)"><?php esc_html_e( 'Copy', 'pressocampus' ); ?></button>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="pc-qs-step">
+				<span class="pc-qs-num">3</span>
+				<div>
+					<p><strong><?php esc_html_e( 'Test the connection', 'pressocampus' ); ?></strong> &mdash; <?php esc_html_e( 'ask your AI client to connect, then click Test to confirm it can reach your Brain.', 'pressocampus' ); ?></p>
+					<button class="button button-secondary" id="pc-qs-test-btn" onclick="pcTestConnection(this, document.getElementById('pc-qs-test-result'))"><?php esc_html_e( 'Test Connection', 'pressocampus' ); ?></button>
+					<span id="pc-qs-test-result" style="margin-left:8px;vertical-align:middle"></span>
+				</div>
+			</div>
+
+		</div><!-- /pc-qs-steps -->
+		<script>
+		function pcQsClient( btn ) {
+			var wrap = btn.closest( '.pc-qs-step > div' );
+			wrap.querySelectorAll( '.pc-qs-client-btn' ).forEach( function ( b ) { b.classList.remove( 'active' ); } );
+			wrap.querySelectorAll( '.pc-qs-client-panel' ).forEach( function ( p ) { p.classList.remove( 'active' ); } );
+			btn.classList.add( 'active' );
+			var panel = wrap.querySelector( '.pc-qs-client-panel[data-client="' + btn.dataset.client + '"]' );
+			if ( panel ) { panel.classList.add( 'active' ); }
+		}
+		</script>
+	</div><!-- /pc-quickstart -->
+	<?php endif; ?>
 
 		<?php if ( get_option( 'permalink_structure', '' ) === '' ) : ?>
 		<div class="notice notice-error">
