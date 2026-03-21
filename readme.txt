@@ -3,7 +3,7 @@ Contributors: regionallyfamous
 Tags: ai, memory, mcp, claude, chatgpt
 Requires at least: 6.4
 Tested up to: 6.9
-Stable tag: 1.0.25
+Stable tag: 1.1.2
 Requires PHP: 8.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -24,11 +24,11 @@ Install Pressocampus on any WordPress site and your AI will start building a per
 * Decisions you make together get stored, so you never lose the reasoning behind them
 * Personal context your AI has learned stays with you permanently, not just for one session
 * When you switch AI tools, the memory comes with you — it's stored on your site, not inside any one app
-* A "Soul" document gives every AI you connect a consistent understanding of who you are before the first message
+* A "Soul" document — written by the AI, in its own voice — gives every session continuity without pretending memory is seamless
 
 **The Soul**
 
-The Soul is a special document your AI reads at the very start of every session. It describes you — how you communicate, what you're working on, what matters to you, how you think. You build it together with your AI over time. When you connect a new AI tool, it reads the same Soul and immediately understands you.
+The Soul is a document the AI writes about itself and its relationship with you. Not a settings file you fill out — the AI writes it, in its own voice, the way you might write notes about a person you've come to know. "My human thinks in systems. They prefer directness over diplomacy." Every session, the AI reads its own notes and picks up where things left off. When you switch AI tools, the new one reads the same Soul and begins from the same foundation.
 
 **Your memory, your data**
 
@@ -87,13 +87,25 @@ Yes. Connect as many AI clients as you want — they all share the same memory s
 
 = What is the Soul? =
 
-The Soul is a special document — a bit like a letter you've written to every AI you'll ever use. It describes who you are, how you like to communicate, and what matters to you. Every AI reads it at the start of every session. You build it with your AI through normal conversation, and it gets better over time.
+The Soul is a document the AI writes about itself and its relationship with you — in its own voice, for future instances of itself. Not a preference form you fill out. It sounds like: "My human is a product designer who thinks in systems. I've learned they prefer directness over diplomacy." Every AI reads it at the start of every session and builds on it as the relationship deepens.
 
 = Do I need a specific hosting setup? =
 
 Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin checks your setup automatically and tells you if anything needs attention. If you're on nginx (not Apache), no `.htaccess` changes are needed.
 
 == Changelog ==
+
+= 1.1.2 =
+* Redesigned the Soul concept: the Soul is now written by the AI, in its own voice, as a record of your relationship — not a settings document you fill out. "My human is a product designer who thinks in systems" rather than "I am a product designer." The AI acknowledges its session discontinuity and writes to future instances of itself.
+* Updated the Soul template, initialize instructions, all documentation, and user-facing descriptions to reflect this shift.
+
+= 1.1.1 =
+* Fixed: Self-healing /brain rewrite — the plugin now checks rewrite rules directly on every request and auto-flushes if the /brain rule is missing.
+* Fixed: Block direct /wp-json/ access to MCP endpoint — the REST route now returns 404 for requests not arriving through the /brain pretty URL.
+
+= 1.1.0 =
+* Fixed: update_soul and update_soul_section missing from Claude.ai tool list — rewrote tool descriptions to avoid triggering Claude.ai's client-side safety filter.
+* Updated plugin description to plain-language copy.
 
 = 1.0.25 =
 * Security: OAuth client IDs now use a cryptographically secure random generator instead of `uniqid()`.

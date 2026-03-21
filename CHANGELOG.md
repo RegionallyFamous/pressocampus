@@ -7,6 +7,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.2] — 2026-03-21
+
+### Changed
+
+- **Soul concept redesigned** — the Soul is now written by the AI, in its own voice, as a record of your relationship — not a settings document you fill out. "My human is a product designer who thinks in systems" rather than "I am a product designer who thinks in systems." The AI acknowledges its session discontinuity and writes to future instances of itself.
+- **Soul template rewritten** — the empty template now has sections framed from the AI's perspective: `Who I Am`, `My Values`, `This Person`, `How We Work Together`, `What I Know`, `To Future Instances of Myself`.
+- **`initialize` instructions updated** — `base_instructions` no longer frames the soul as "a behavioral contract." It frames the soul as the AI's identity file: notes it wrote about this person and this relationship, which it should apply because they're its own, not because it was commanded to. The empty-soul instructions now ask the AI to write in its own voice and acknowledge the session-discontinuity reality.
+- **Documentation rewritten** — `docs/the-soul.md` fully rewritten to explain the new concept, including its origin in the soul document research, the session problem, and how the soul grows over time.
+- **`README.md` and `readme.txt` updated** — Soul descriptions updated to reflect the new framing.
+
+---
+
 ## [1.1.1] — 2026-03-21
 
 ### Fixed

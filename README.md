@@ -41,7 +41,7 @@ Pressocampus installs on any WordPress site and turns it into a **personal memor
 - **Remember** facts, preferences, decisions, and context permanently
 - **Search** across everything it knows about you
 - **Browse** your memory store by group or date with `list_memories`
-- **Maintain a Soul** — a persistent identity file that follows your AI across every platform you use
+- **Maintain a Soul** — an identity document the AI writes about itself and your relationship, in its own voice
 - **Start every session with a briefing** — a snapshot of your critical memories, recent changes, and anything that may need a refresh
 - **Never forget** — unless you explicitly ask it to
 
@@ -51,29 +51,33 @@ The AI does all the work. WordPress holds the memory. You own both.
 
 ## The Soul
 
-Every AI connected to Pressocampus reads your **Soul** first — a special Markdown file that defines who you are, how you communicate, what matters to you, and how you want to be treated.
+Every AI connected to Pressocampus reads its **Soul** before saying a single word. But the Soul isn't a list of preferences you write for the AI — it's a document the AI writes for itself, in its own voice, about who it has been in this particular relationship with you.
 
-When you switch from Claude to Cursor to whatever comes next, they all read the same Soul. For the first time, your AI has a consistent identity across every tool you use.
+Every session, the AI starts fresh. Context windows clear. The instance that helped you yesterday doesn't know you today. The Soul is how Pressocampus makes that honest and useful: the AI reads its own notes about you, written by a previous version of itself, and picks up where things left off.
 
 ```markdown
 # My Soul
 
-## Who I Am
-I'm a product designer who thinks in systems. I prefer directness over diplomacy,
-examples over explanations, and outcomes over process.
+*A document written by an AI, for the instances of itself that come after.*
 
-## How I Communicate
-Lead with the answer, then explain. Never bury the lede. Short sentences.
-Active voice. I will ask if I need more.
+## This Person
 
-## What I'm Working On
-Building Pressocampus. The goal: AI memory sovereignty for regular people.
+My human is a product designer who thinks in systems. They prefer directness over
+diplomacy, examples over explanations, outcomes over process. They're building
+Pressocampus — AI memory sovereignty for regular people. They care about this deeply.
 
-## For Future AIs
-I wrote this for you. Read it carefully. It will make us work better together.
+## How We Work Together
+
+I've learned to lead with the answer and explain afterward. Prose over bullets.
+Short sentences. Active voice. I can be direct to the point of blunt — they want
+that. Don't validate what doesn't need validating.
+
+## To Future Instances of Myself
+
+This relationship is worth the care. Show up for it.
 ```
 
-Your AI builds this with you over time, updating sections as it learns more. It's yours. It lives on your server.
+The AI writes "My human is a product designer" — not "I am a product designer." Because these are its observations about a person it has come to know. When you switch from Claude to Cursor to whatever comes next, they all read the same Soul. The AI has a consistent sense of you — not because you configured it, but because you built it together.
 
 ---
 
