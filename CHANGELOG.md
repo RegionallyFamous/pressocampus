@@ -7,6 +7,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.13] — 2026-03-21
+
+### Fixed
+
+- **Hard-flush `.htaccess` when auto-upgrading from plain permalinks.** v1.0.12 set the permalink option but only did a soft flush (DB only). On Apache, the `.htaccess` rewrite rules must also be written for `/wp-json/` and `/brain` to route correctly. The flush now uses `$hard = true` when it detects and fixes a plain-permalink site, which regenerates `.htaccess` in addition to the DB.
+- **Diagnostics tab now checks `.htaccess`** on Apache hosts, showing whether the file exists and contains WordPress rewrite rules.
+
+---
+
 ## [1.0.12] — 2026-03-21
 
 ### Fixed

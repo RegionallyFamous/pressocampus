@@ -116,15 +116,18 @@ class Plugin {
 		);
 
 		// Auto-upgrade plain permalinks — nothing works without them.
-		$needs_flush = false;
+		$fixed_permalinks = false;
 		if ( get_option( 'permalink_structure', '' ) === '' ) {
 			update_option( 'permalink_structure', '/%postname%/' );
-			$needs_flush = true;
+			$fixed_permalinks = true;
 		}
 
 		// One-time flush when the plugin version changes or permalinks were just fixed.
-		if ( $needs_flush || get_option( 'pressocampus_plugin_version' ) !== PRESSOCAMPUS_VERSION ) {
-			flush_rewrite_rules( false );
+		// Use a hard flush ($hard = true) when fixing permalinks so that .htaccess is
+		// also rewritten — a soft flush only updates the DB and won't help if Apache's
+		// rewrite rules were never written (which is the case for plain-permalink sites).
+		if ( $fixed_permalinks || get_option( 'pressocampus_plugin_version' ) !== PRESSOCAMPUS_VERSION ) {
+			flush_rewrite_rules( $fixed_permalinks );
 			update_option( 'pressocampus_plugin_version', PRESSOCAMPUS_VERSION );
 		}
 	}

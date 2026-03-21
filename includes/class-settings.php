@@ -1060,6 +1060,31 @@ CSS;
 			'detail' => PHP_VERSION . ( $php_ok ? '' : ' — 8.3+ required' ),
 		);
 
+		// 1b. Server software + .htaccess (Apache only)
+		$server_software = $_SERVER['SERVER_SOFTWARE'] ?? 'unknown';
+		$is_apache       = stripos( $server_software, 'apache' ) !== false;
+		$htaccess_path   = ABSPATH . '.htaccess';
+		if ( $is_apache ) {
+			$htaccess_exists = file_exists( $htaccess_path );
+			$htaccess_has_wp = $htaccess_exists && str_contains( (string) file_get_contents( $htaccess_path ), 'RewriteRule' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			$checks[]        = array(
+				'label'  => '.htaccess (Apache)',
+				'pass'   => $htaccess_has_wp,
+				'warn'   => $htaccess_exists && ! $htaccess_has_wp,
+				'detail' => ! $htaccess_exists
+					? 'File not found at ' . $htaccess_path . ' — save Permalinks to generate it'
+					: ( $htaccess_has_wp
+						? 'WordPress rewrite rules present'
+						: 'File exists but has no RewriteRule — save Permalinks to add WordPress rules' ),
+			);
+		} else {
+			$checks[] = array(
+				'label'  => 'Web server',
+				'pass'   => true,
+				'detail' => $server_software . ' (not Apache — .htaccess not applicable)',
+			);
+		}
+
 		// 2. OpenSSL extension
 		$ssl_ok   = extension_loaded( 'openssl' );
 		$checks[] = array(
