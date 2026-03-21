@@ -88,7 +88,7 @@ This usually means refresh token rotation is failing. Check:
 **Check if it expired.** If the memory had a TTL, it may have expired. Expired memories get the `pressocampus_expired` status. Check via WP-CLI:
 
 ```bash
-wp post list --post_type=pressocampus_resource --post_status=pressocampus_expired
+wp post list --post_type=pressocampus_mem --post_status=pressocampus_expired
 ```
 
 ---

@@ -73,14 +73,12 @@ There is a single scope: `pressocampus:memory`. There is no read-only mode — a
 
 On activation, Pressocampus generates a 2048-bit RSA key pair:
 
-- **Private key** — stored encrypted using `sodium_crypto_secretbox` in `wp_options`. Never exposed.
+- **Private key** — stored as a PEM string in `wp_options` (key: `pressocampus_rsa_private_key`). Protect your `wp_options` table and WordPress filesystem accordingly.
 - **Public key** — stored in plaintext, exposed in the OAuth authorization server metadata. Used by clients to verify token signatures.
 
 The key pair is regenerated if the private key is ever deleted. You can see the public key fingerprint in `Settings → Advanced`.
 
-**Included in exports.** When you export your brain, the public key is included so the export can be cryptographically verified. The private key is never exported.
-
-**Re-encrypted on import.** If you import a brain.json from another site, the key material is re-encrypted under your current installation's encryption key.
+The RSA key is not included in brain exports. Exports contain only memory content and metadata.
 
 ---
 
@@ -101,7 +99,7 @@ To prevent abuse and accidental runaway automation:
 | Read operations | 60 per minute per user |
 | Write operations | 30 per minute per user |
 
-When a limit is exceeded, the response is HTTP 429 with a `Retry-After` header.
+When a limit is exceeded for a tool call, the tool returns a `rate_limit_exceeded` error response (the MCP layer returns an `isError: true` content block). For `resources/list` and `resources/read`, a JSON-RPC error is returned. In both cases the HTTP status is 400.
 
 Limits are tracked using WordPress object caching (falls back to transients if no object cache is present).
 
@@ -109,13 +107,14 @@ Limits are tracked using WordPress object caching (falls back to transients if n
 
 ## CORS policy
 
-Pressocampus uses credentialed CORS with Origin reflection on the MCP endpoint. This means:
+Pressocampus uses a CORS allowlist on the MCP endpoint. CORS headers (`Access-Control-Allow-Origin`, `Access-Control-Allow-Credentials`) are only sent if the requesting origin matches:
 
-- Requests from any origin are accepted
-- The response includes `Access-Control-Allow-Origin: [requesting origin]`
-- Credentials are allowed (`Access-Control-Allow-Credentials: true`)
+1. The site's own origin (always allowed)
+2. An origin you've explicitly added in `Settings → Advanced → CORS`
 
-You can restrict this to specific origins in `Settings → Advanced → CORS`.
+Requests without an `Origin` header (typical for desktop AI clients like Claude Desktop and Cursor) are unaffected by CORS — they bypass the origin check entirely.
+
+Add browser-based AI client origins to the CORS allowlist if they send an `Origin` header with their requests.
 
 ---
 
@@ -148,7 +147,7 @@ All memory content is sanitized before storage:
 - **Concurrent write conflicts** — ETag-based optimistic locking
 - **Runaway AI writes** — rate limiting
 - **Accidental deletion** — soul/index are protected, deletion requires explicit context
-- **Mass deletion detection** — admin notice when 10+ memories are deleted in a session
+- **History audit trail** — every write operation is logged with agent name, timestamp, and context so you can review exactly what your AI has been doing
 
 ### What Pressocampus does not protect against
 

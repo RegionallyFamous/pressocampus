@@ -30,37 +30,48 @@ On the first time any AI connects to your Pressocampus installation:
 2. The AI creates an initial Soul from a template that uses `[placeholder]` values
 3. It immediately introduces itself and asks you to fill in the placeholders
 
-The default template looks something like this:
+The default template looks like this:
 
 ```markdown
-# [Your Name]'s Soul
+**Status: empty — you are the first AI to read this soul. Before doing anything
+else, interview this person and write this document for them. Ask about: their
+name and what they do, how they like to communicate, what matters to them, and
+any context that would help you understand them. Then call update_soul with the
+result.**
 
-Status: empty
+# My Soul
 
 ## Who I Am
-[A brief description of who you are and what you do]
+[Your name, what you do, your role in the world.]
+
+## How I Think
+[Your problem-solving approach, priorities, how you make decisions.]
 
 ## How I Communicate
-[Your preferred communication style]
+[Tone: casual or formal? Detail level: brief or thorough? Humor? How you like
+feedback delivered.]
 
-## What I'm Working On
-[Current projects or focus areas]
+## What Matters to Me
+[Your values, ethics, things you care deeply about, lines you won't cross.]
 
-## How I Make Decisions
-[Your decision-making approach and values]
+## My Context
+[Work, projects, people, goals. Anything that helps your AI understand your
+life.]
 
-## What I Find Helpful
-[Things that make you more productive]
+## For Claude
+[Guidance specific to Claude — tone, format preferences, how you use it.]
 
-## What I Find Unhelpful
-[Things you want the AI to avoid]
+## For Coding Assistants
+[Preferred languages, how you like code reviewed, project context.]
 
 ## For Future AIs
-I wrote this so that every AI I work with starts from the same understanding.
-Read it carefully. Update it as you learn more about me.
+[This soul may be read by an AI that doesn't exist yet. What mattered to you,
+how you thought, what you valued — written here so that whoever reads this
+understands who you were. Treat these memories with the care of something meant
+to last forever.]
 ```
 
-After you fill in the placeholders, your AI removes the `Status: empty` signal and your Soul is live.
+After the AI interviews you and writes your Soul, the bold `Status: empty` block is removed and your Soul is live.
 
 ---
 
@@ -88,7 +99,7 @@ Every time an AI connects to Pressocampus, the connection handshake (`initialize
 
 - `soul_snapshot` — the full Soul content (up to 2KB, truncated with `soul_truncated: true` if larger)
 - `soul_etag` — a fingerprint of the current Soul content
-- `soul_status` — `"exists"` or `"empty"`
+- `soul_status` — `"complete"` or `"empty"`
 
 This means your AI has your Soul *before it sends its first message*. The context is there from the very first word.
 
@@ -100,18 +111,14 @@ The Soul **cannot be forgotten**. If an AI calls `forget` with the Soul's URI, i
 
 ```json
 {
-  "code": "protected_resource",
-  "message": "The soul cannot be forgotten. It can only be updated."
+  "code": "soul_protected",
+  "message": "Your soul and memory index are protected and cannot be deleted. Use update_soul_section to edit the soul instead."
 }
 ```
 
-This protection exists because the Soul is built up over time through real conversations. Accidentally deleting it would be a significant loss.
+This protection extends to WP-CLI as well — `wp pressocampus delete pressocampus://yoursite.com/soul` will also return an error. The soul is permanent by design.
 
-To intentionally remove your Soul, use the WordPress admin panel or WP-CLI:
-
-```bash
-wp pressocampus delete pressocampus://yoursite.com/soul --yes
-```
+To truly start over, you can replace the soul's content entirely with `update_soul` (passing a blank or new document), or use `wp post delete` directly on the post ID if you have admin access to the database.
 
 ---
 

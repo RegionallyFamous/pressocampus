@@ -1,16 +1,8 @@
 # WP-CLI Reference
 
-Pressocampus includes a comprehensive WP-CLI command set for power users, DevOps, and automated workflows. All commands use the `wp pressocampus` namespace.
+Pressocampus provides a full suite of WP-CLI commands for managing memories, running imports and exports, reviewing the audit log, and maintaining your installation.
 
----
-
-## Installation check
-
-```bash
-wp pressocampus --help
-```
-
-If Pressocampus is active, you'll see the full command list. If the plugin isn't installed or active, WP-CLI will report the command as unknown.
+All commands follow the pattern: `wp pressocampus <command> [options]`
 
 ---
 
@@ -18,289 +10,233 @@ If Pressocampus is active, you'll see the full command list. If the plugin isn't
 
 List memories for a user.
 
-### Usage
-
-```bash
-wp pressocampus list [--user=<user>] [--group=<group>] [--format=<format>]
-```
-
 ### Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--user=<user>` | Current user | Username, email, or ID |
-| `--group=<group>` | All groups | Filter by group name |
-| `--format=<format>` | `table` | `table`, `json`, `csv`, `ids` |
+| Option | Description |
+|--------|-------------|
+| `--user=<user>` | WordPress user ID or login. Defaults to the current user. |
+| `--group=<group>` | Filter by group/category. |
+| `--format=<format>` | Output format: `table` (default), `json`, `csv`. |
+
+### Output columns
+
+`uri`, `name`, `group`, `priority`, `confidence`, `updated`
 
 ### Examples
 
 ```bash
-# List all memories (table format)
 wp pressocampus list
-
-# List all memories for a specific user
-wp pressocampus list --user=nick
-
-# List memories in the "work" group as JSON
 wp pressocampus list --group=work --format=json
-
-# Get just the URIs
-wp pressocampus list --format=ids
-```
-
-### Output (table)
-
-```
-+------------------------------------------+---------------------------------+-------+----------+
-| uri                                      | name                            | group | priority |
-+------------------------------------------+---------------------------------+-------+----------+
-| pressocampus://yoursite.com/soul         | Soul                            | soul  | critical |
-| pressocampus://yoursite.com/memory/abc1  | Prefers TypeScript              | tech  | important|
-+------------------------------------------+---------------------------------+-------+----------+
+wp pressocampus list --user=nick --format=csv
 ```
 
 ---
 
 ## `wp pressocampus get`
 
-Retrieve a single memory by URI.
+Print the full content of a memory by URI.
 
-### Usage
+### Arguments
 
-```bash
-wp pressocampus get <uri> [--format=<format>]
-```
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<uri>` | Yes | The full `pressocampus://` URI |
 
 ### Examples
 
 ```bash
-# Get the soul
-wp pressocampus get pressocampus://yoursite.com/soul
-
-# Get a specific memory as JSON
-wp pressocampus get pressocampus://yoursite.com/memory/abc12345 --format=json
+wp pressocampus get pressocampus://mysite.com/memory/abc123
+wp pressocampus get pressocampus://mysite.com/soul
 ```
-
-### Output
-
-Full memory content is printed to stdout. With `--format=json`, you get the complete metadata object.
 
 ---
 
 ## `wp pressocampus delete`
 
-Delete a memory by URI.
+Hard-delete a memory by URI. This is permanent and bypasses the trash.
 
-### Usage
+The soul (`pressocampus://yoursite.com/soul`) and index (`pressocampus://yoursite.com/index`) cannot be deleted — even with this command.
 
-```bash
-wp pressocampus delete <uri> [--yes]
-```
+### Arguments
 
-### Notes
+| Argument | Required | Description |
+|----------|----------|-------------|
+| `<uri>` | Yes | The full `pressocampus://` URI to delete |
 
-- Protected memories (soul, index) cannot be deleted with this command — they're protected even at the CLI level to prevent accidents
-- Without `--yes`, you'll be prompted to confirm
-- Deletion is irreversible
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `--yes` | Skip the confirmation prompt. |
 
 ### Examples
 
 ```bash
-# Delete with confirmation prompt
-wp pressocampus delete pressocampus://yoursite.com/memory/abc12345
-
-# Delete without prompting
-wp pressocampus delete pressocampus://yoursite.com/memory/abc12345 --yes
+wp pressocampus delete pressocampus://mysite.com/memory/abc123
+wp pressocampus delete pressocampus://mysite.com/memory/abc123 --yes
 ```
 
 ---
 
 ## `wp pressocampus export`
 
-Export memories to a file or folder.
-
-### Usage
-
-```bash
-wp pressocampus export [--user=<user>] [--format=<format>] [--output=<path>]
-```
+Export memories to a file.
 
 ### Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--user=<user>` | Current user | User to export |
-| `--format=<format>` | `json` | `json` or `markdown-folder` |
-| `--output=<path>` | stdout / `./brain/` | Output file or directory |
+| Option | Description |
+|--------|-------------|
+| `--user=<user>` | WordPress user ID or login. Defaults to the current user. |
+| `--format=<format>` | `json` (default) or `markdown-folder`. |
+| `--output=<path>` | Output path. For `json`: defaults to `./pressocampus-export-{date}.json`. For `markdown-folder`: defaults to `./pressocampus-export-{date}/`. |
 
 ### Formats
 
-**`json`** — Single `brain.json` file with all metadata and content. Best for backup and programmatic processing.
+**`json`** — Exports all memories (including the soul) as a single JSON file with full metadata. Suitable for re-importing.
 
-**`markdown-folder`** — A directory of `.md` files, one per memory. The soul is exported as `SOUL.md`. Best for reading, version control, or processing with other tools.
+**`markdown-folder`** — Exports each memory as an individual `.md` file with YAML front matter, and the soul as `SOUL.md`. Useful for reading in a text editor or version-controlling your memories.
 
 ### Examples
 
 ```bash
-# Export to JSON (stdout)
 wp pressocampus export
-
-# Export to a JSON file
-wp pressocampus export --format=json --output=brain-backup.json
-
-# Export to a folder of Markdown files
+wp pressocampus export --format=json --output=brain.json
 wp pressocampus export --format=markdown-folder --output=./brain/
-
-# Export a specific user's memories
-wp pressocampus export --user=alice --output=alice-brain.json
+wp pressocampus export --user=nick --format=markdown-folder
 ```
 
 ---
 
 ## `wp pressocampus import`
 
-Import memories from a previous export.
+Import memories from a JSON file or Markdown folder.
 
-### Usage
+All imported memories are upserted — if a memory with the same URI already exists, it is updated. If it doesn't exist, it is created.
 
-```bash
-wp pressocampus import --file=<path> [--user=<user>] [--yes] [--replace]
-```
+For the soul specifically, the command will prompt for confirmation before overwriting unless `--yes` is passed.
 
 ### Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--file=<path>` | Required | Path to `brain.json` or a Markdown folder |
-| `--user=<user>` | Current user | User to import into |
-| `--yes` | false | Skip confirmation prompt |
-| `--replace` | false | Overwrite memories with matching URIs |
-
-### Notes
-
-- By default, memories with URIs that already exist are **skipped** (not overwritten)
-- Use `--replace` to overwrite existing memories
-- The soul is imported and merged with the existing soul if `--replace` is not set
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--file=<path>` | Yes | Path to a `.json` file or a directory of `.md` files. |
+| `--user=<user>` | No | Target WordPress user ID or login. Defaults to the current user. |
+| `--yes` | No | Skip the soul-overwrite confirmation prompt. |
 
 ### Examples
 
 ```bash
-# Import from JSON, preview first (dry run is the default without --yes)
 wp pressocampus import --file=brain.json
-
-# Import, overwrite existing memories
-wp pressocampus import --file=brain.json --yes --replace
-
-# Import a Markdown folder into a specific user
-wp pressocampus import --file=./brain/ --user=bob --yes
+wp pressocampus import --file=brain.json --user=nick --yes
+wp pressocampus import --file=./brain/
 ```
 
 ---
 
 ## `wp pressocampus migrate-domain`
 
-Update all memory URIs when your site's domain changes.
+Update all memory URIs when a site's domain has changed.
 
-### Usage
-
-```bash
-wp pressocampus migrate-domain --from=<old-domain> --to=<new-domain> [--dry-run] [--yes]
-```
+This command rewrites `pressocampus://<old-host>/...` URIs to `pressocampus://<new-host>/...` in:
+- Post meta (`_pressocampus_uri`)
+- The resource index table
+- Related URI references (`_pressocampus_related`)
 
 ### Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--from=<domain>` | Required | Old hostname (e.g., `old.com`) |
-| `--to=<domain>` | Required | New hostname (e.g., `new.com`) |
-| `--dry-run` | false | Preview changes without applying them |
-| `--yes` | false | Skip confirmation |
-
-### Notes
-
-- Updates `_pressocampus_uri` meta for all memory posts
-- Updates all `_pressocampus_related` references
-- Updates the soul and index URIs
-- Run this immediately after changing your domain to keep URIs consistent
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--from=<host>` | Yes | The old hostname (e.g. `old.com`) |
+| `--to=<host>` | Yes | The new hostname (e.g. `new.com`) |
+| `--dry-run` | No | Preview changes without applying them. |
 
 ### Examples
 
 ```bash
-# Preview the migration
+wp pressocampus migrate-domain --from=old.com --to=new.com
 wp pressocampus migrate-domain --from=old.com --to=new.com --dry-run
-
-# Apply the migration
-wp pressocampus migrate-domain --from=old.com --to=new.com --yes
 ```
 
 ---
 
 ## `wp pressocampus flush-cache`
 
-Clear the Pressocampus object cache.
+Flush the Pressocampus object cache group (or the full object cache if the group-flush function isn't available).
 
-### Usage
+Use this if the resource index appears stale after direct database changes.
+
+### Examples
 
 ```bash
 wp pressocampus flush-cache
 ```
 
-Use this after making manual database changes or if you suspect stale cache data. Normal operation should never require this.
-
 ---
 
 ## `wp pressocampus audit`
 
-View the audit log.
+Show the Pressocampus audit log.
 
-### Usage
-
-```bash
-wp pressocampus audit [--user=<user>] [--action=<action>] [--limit=<n>] [--format=<format>]
-```
+Output columns: `date`, `agent`, `action`, `memory`, `context`
 
 ### Options
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `--user=<user>` | All users | Filter by user |
-| `--action=<action>` | All actions | `remember`, `forget`, `update`, `search`, `soul_update` |
-| `--limit=<n>` | 20 | Number of entries to return |
-| `--format=<format>` | `table` | `table`, `json`, `csv` |
+| `--days=<n>` | `7` | Show entries from the last N days. |
+| `--user=<user>` | (all users) | Filter by WordPress user ID or login. |
+| `--format=<format>` | `table` | Output format: `table`, `json`, or `csv`. |
 
 ### Examples
 
 ```bash
-# Last 20 audit entries
 wp pressocampus audit
-
-# All "forget" actions
-wp pressocampus audit --action=forget
-
-# Last 100 entries for a user, as JSON
-wp pressocampus audit --user=alice --limit=100 --format=json
+wp pressocampus audit --days=30
+wp pressocampus audit --user=nick --format=csv > audit.csv
 ```
 
 ---
 
 ## `wp pressocampus stats`
 
-Display memory statistics.
+Show memory statistics for all users.
 
-### Usage
+Outputs three sections:
+
+**Memories per User** — a table showing each user's login, display name, memory count (excluding soul and index), and soul status (`empty` or `complete`).
+
+**DB Table Row Counts** — raw counts from the three custom DB tables:
+- `pressocampus_resource posts` — posts in the `pressocampus_mem` CPT
+- `resource_index rows` — rows in the resource index table
+- `audit_log rows` — rows in the audit log table
+
+**Last Activity** — timestamp of the most recent audit log entry.
+
+### Example
 
 ```bash
-wp pressocampus stats [--user=<user>]
+wp pressocampus stats
 ```
 
-### Output
+```
+== Memories per User ==
++-------+--------------+----------+-------------+
+| user  | display_name | memories | soul_status |
++-------+--------------+----------+-------------+
+| nick  | Nick Smith   | 247      | complete    |
++-------+--------------+----------+-------------+
 
+== DB Table Row Counts ==
+  pressocampus_resource posts : 249
+  resource_index rows         : 249
+  audit_log rows              : 1842
+
+== Last Activity ==
+  2025-03-19 14:22:35
 ```
-User: nick
-Total memories: 247
-Soul: exists (last updated 3 days ago)
-Groups: work (89), personal (62), technical (54), projects (42)
-Priority breakdown: critical (12), important (67), normal (145), low (23)
-Oldest memory: 2024-08-15
-Largest memory: 4.2KB
-```
+
+---
+
+## Global options
+
+All commands support the standard WP-CLI global options (`--url`, `--path`, `--user`, etc.). On Multisite, use `--url=<site>` to target a specific sub-site before running commands.

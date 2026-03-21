@@ -14,7 +14,7 @@ A memory is a single piece of information stored permanently on your WordPress s
 | **Name** | A short display title (auto-generated if not provided) |
 | **Content** | The memory itself, in plain text or Markdown |
 | **Group** | An optional category for organization |
-| **MIME type** | Usually `text/plain` or `text/markdown` |
+| **MIME type** | Always `text/markdown` |
 | **Priority** | `critical`, `important`, `normal`, or `low` |
 | **Confidence** | `high`, `medium`, or `low` — how certain the AI was |
 | **Related** | URIs of related memories (knowledge graph) |
@@ -94,7 +94,7 @@ Low-confidence memories may be updated or removed as better information becomes 
 
 ## TTL and expiry
 
-Some information has a natural shelf life. Memories can have an optional `expires_at` timestamp, after which they're marked with a custom `pressocampus_expired` status.
+Some information has a natural shelf life. Memories can have an optional `expires_at` post meta value, after which they're marked with a custom `pressocampus_expired` status by an hourly WP-Cron job.
 
 Expired memories are:
 - Hidden from `resources/list`
@@ -102,12 +102,7 @@ Expired memories are:
 - Not counted toward your memory limit
 - Retained in the database for audit purposes
 
-Use TTL for:
-- Project context that's only relevant during a specific engagement
-- Temporary preferences ("I'm on a deadline this week, keep responses very short")
-- Time-sensitive reminders
-
-Currently, TTL can be set by your AI when calling `remember`. There is no UI to set it manually.
+TTL is currently managed via WP-CLI or direct post meta editing. The `remember` MCP tool does not accept an `expires_at` parameter — set expiry after creation with `wp post meta update <post-id> _pressocampus_expires_at <ISO-8601-date>`.
 
 ---
 
@@ -151,7 +146,7 @@ When your AI updates or deletes a memory, it updates related references automati
 
 You can export all your memories at any time:
 
-- **From the admin:** `Settings → Advanced → Download Brain` — downloads a ZIP containing all memories as Markdown files plus a `brain.json` manifest
+- **From the admin:** `Settings → Advanced → Download Brain` — downloads a `pressocampus-brain.json` file (or a ZIP containing it) with all memories and metadata
 - **From WP-CLI:** `wp pressocampus export --format=markdown-folder --output=./brain/`
 
 The export format is plain Markdown, readable by any text editor, importable by any future version of Pressocampus.

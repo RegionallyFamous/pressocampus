@@ -28,15 +28,15 @@ Open the config file (create it if it doesn't exist) and add your server:
 ```json
 {
   "mcpServers": {
-    "my-brain": {
-      "type": "http",
-      "url": "https://yoursite.com/brain"
+    "pressocampus": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://yoursite.com/brain"]
     }
   }
 }
 ```
 
-You can use any name in place of `"my-brain"` — it's just a label.
+Claude Desktop uses `npx mcp-remote` as a proxy to connect to HTTP MCP servers. You can use any name in place of `"pressocampus"` — it's just a label.
 
 ### Step 3 — Restart Claude Desktop
 
@@ -65,9 +65,9 @@ Cursor supports MCP in its settings.
 1. Open Cursor → **Settings** → **Features** → **MCP Servers**
 2. Click **Add New MCP Server**
 3. Set:
-   - **Name:** `my-brain` (or anything you like)
+   - **Name:** `pressocampus` (or anything you like)
    - **Type:** `HTTP`
-   - **URL:** `https://yoursite.com/wp-json/pressocampus/v1/mcp`
+   - **URL:** `https://yoursite.com/brain`
 4. Click **Save**
 
 ### Via `~/.cursor/mcp.json`
@@ -75,7 +75,7 @@ Cursor supports MCP in its settings.
 ```json
 {
   "mcpServers": {
-    "my-brain": {
+    "pressocampus": {
       "type": "http",
       "url": "https://yoursite.com/brain"
     }

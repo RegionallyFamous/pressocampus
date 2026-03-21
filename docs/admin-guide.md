@@ -10,10 +10,10 @@ After activation, you'll find **Pressocampus** in your WordPress admin sidebar:
 
 ```
 Pressocampus
-├── History
-└── Settings
-    ├── Connect
-    └── Advanced
+├── Settings
+│   ├── Connect
+│   └── Advanced
+└── History
 ```
 
 ---
@@ -25,7 +25,7 @@ This is your home base. Everything you need to get an AI client connected.
 ### Brain Endpoint URL
 
 ```
-https://yoursite.com/wp-json/pressocampus/v1/mcp
+https://yoursite.com/brain
 ```
 
 This is the URL you paste into your AI client. Copy it with the one-click copy button.
@@ -35,9 +35,9 @@ This is the URL you paste into your AI client. Copy it with the one-click copy b
 A dropdown with pre-filled configuration snippets for popular AI clients. Selecting a client shows a JSON block you can copy directly into that client's config file.
 
 Available snippets:
-- **Claude Desktop** — `claude_desktop_config.json` format
-- **Cursor** — `~/.cursor/mcp.json` format
-- **Generic MCP** — standard HTTP transport format
+- **Claude Desktop** — uses `npx mcp-remote` as a proxy (standard Claude Desktop MCP format)
+- **Cursor** — native `"type": "http"` format for `~/.cursor/mcp.json`
+- **Generic MCP** — standard endpoint + auth format
 
 ### Starter Prompt
 
@@ -46,13 +46,12 @@ A copy button that gives you a natural-language prompt to paste into your first 
 ### Soul status
 
 A one-line indicator showing:
-- `Soul exists` — your soul has been created and has content
-- `Soul is empty` — your soul was created from the template but hasn't been filled in yet
-- `No soul yet` — no AI has connected and created a soul yet
+- `Soul is empty` — a soul post exists but hasn't been filled in yet (still has the `Status: empty` marker)
+- `Soul exists` — your soul has real content
 
 ### Test Connection
 
-A button that fires a test `initialize` request to your MCP endpoint and shows the result — either a green "Connected" status or an error with diagnostics.
+A button that sends a `{"method":"ping"}` request to your MCP endpoint and shows whether the endpoint is reachable and responding. A 401 response also counts as "reachable" — it means OAuth is working.
 
 ---
 
@@ -60,13 +59,13 @@ A button that fires a test `initialize` request to your MCP endpoint and shows t
 
 The History page is an audit log of everything your connected AIs have done. Every `remember`, `forget`, `update_memory`, `update_soul`, `update_soul_section`, and `search_memory` call is logged.
 
-The log is displayed using WordPress DataViews — it's searchable, sortable, and filterable.
+The log is a searchable table with URL-based filters.
 
 ### Columns
 
 | Column | Description |
 |--------|-------------|
-| **Action** | What happened: Remembered, Forgot, Updated, Searched, etc. |
+| **Action** | What happened: Saved memory, Deleted memory, Updated memory, Updated soul, Updated soul section, Searched memories |
 | **Memory** | The memory affected (linked to its URI) |
 | **Agent** | The name of the OAuth client that performed the action |
 | **Context** | The optional note the AI provided explaining why |
@@ -76,8 +75,7 @@ The log is displayed using WordPress DataViews — it's searchable, sortable, an
 
 - Filter by **action type** to see all remembers, or all deletes
 - Filter by **agent name** to see what a specific AI client has been doing
-- Filter by **date range** to review a specific period
-- Use the **search box** to find entries by content or context
+- Use the **search box** to find entries by memory name or context
 
 ### What gets logged
 
@@ -93,19 +91,18 @@ The *content* of your memories is not duplicated into the audit log — only the
 
 ### Connected Apps
 
-A list of all OAuth clients that have ever been authorized, showing:
-- Client name (as provided by the client during registration)
-- Authorization date
-- Last active
-- Status (Active / Revoked)
+A list of all OAuth clients currently authorized, showing:
+- App name (as provided by the client during registration)
+- Connected (how long ago)
+- Last used (how long ago)
 
-Click **Revoke** to immediately invalidate a client's tokens. The client will need to re-authorize to reconnect.
+Click **Revoke** to immediately invalidate and delete a client's tokens. The client will need to re-authorize to reconnect.
 
 ### CORS settings
 
-By default, Pressocampus accepts requests from any origin using credentialed CORS with Origin reflection. If you want to restrict which origins can connect, you can enter an allowlist here.
+By default, Pressocampus only accepts CORS requests from origins in your explicit allowlist or from the site's own origin. If you're connecting an AI client that runs in a browser context, add its origin here.
 
-Most users should leave this at the default. You only need to change it if you're running a tightly controlled environment.
+Most local AI clients (Claude Desktop, Cursor) don't send an `Origin` header, so they are unaffected by this setting. Leave this blank if you're not sure.
 
 ### Rate limits
 
@@ -120,33 +117,21 @@ Override the default rate limits:
 
 The maximum number of memories per user. Default: **1,000**.
 
-When this limit is reached, `remember` will fail with a `memory_limit_exceeded` error. Your AI will inform you and suggest consolidating or archiving old memories.
+When this limit is reached, `remember` will fail with a `memory_limit_reached` error. Your AI will inform you and suggest archiving old memories.
 
 ### Max memory size
 
-The maximum content size for a single memory. Default: **64KB**.
+The maximum content size for a single memory. Default: **512 KB**.
 
 ### Download Brain
 
-Downloads a ZIP file containing:
-- `SOUL.md` — your soul as a plain Markdown file
-- `INDEX.md` — your index
-- `memories/` — one `.md` file per memory, named by their slug
-- `brain.json` — a machine-readable manifest with full metadata for every memory
+Downloads a file containing all your memories. If the server has the PHP `ZipArchive` extension, you get a `.zip` containing a single `pressocampus-brain.json` file. Otherwise the raw `.json` file is served directly.
 
-This export is fully portable. It can be imported on any Pressocampus installation.
-
-### Import
-
-Upload a `brain.json` or a folder of `.md` files exported from Pressocampus (or a compatible format). Memories are merged by URI — existing memories are not overwritten unless you check **Replace existing**.
+This export is fully portable and can be re-imported via WP-CLI on any Pressocampus installation.
 
 ### DISABLE_WP_CRON notice
 
-If your site has `DISABLE_WP_CRON` set to `true`, a notice here explains how to configure a real cron job to ensure TTL expiry and token expiry notifications work correctly.
-
-### Uninstall options
-
-- **Delete all data when uninstalling** — when checked, deleting the plugin removes all memories, OAuth data, audit logs, and plugin settings. Unchecked: data persists.
+If your site has `DISABLE_WP_CRON` set to `true`, a notice here explains how to configure a real cron job to ensure TTL expiry, token expiry notifications, and audit log purging work correctly.
 
 ---
 
@@ -156,9 +141,8 @@ Pressocampus shows in-admin notices for events that need your attention:
 
 | Notice | What it means |
 |--------|---------------|
-| `Your soul needs attention` | The soul was created but still has `[placeholder]` values |
+| `Your soul needs attention` | The soul was created but still has the `Status: empty` marker |
 | `Client token expiring soon` | An authorized app's access will expire in the next 7 days |
-| `Mass delete detected` | An AI client deleted 10+ memories in one session |
 | `Soul was updated` | Your AI updated your soul (shown once per soul change) |
 | `Migration needed` | Your site's domain changed and URIs may be stale |
 
@@ -169,7 +153,6 @@ Pressocampus shows in-admin notices for events that need your attention:
 On a WordPress site with multiple users:
 
 - Each user's History page shows only their own activity
-- Administrators see a user selector to review any user's history
 - Connected Apps shows only apps connected under the current user
 - The "Download Brain" export is per-user
 

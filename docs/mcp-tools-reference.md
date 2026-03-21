@@ -29,12 +29,35 @@ Store a new memory permanently.
 ```json
 {
   "uri": "pressocampus://yoursite.com/memory/abc12345",
-  "name": "Prefers TypeScript over JavaScript",
-  "created": true
+  "name": "Prefers TypeScript over JavaScript"
 }
 ```
 
-If a very similar memory already exists, `created` will be `false` and the existing memory will have been updated instead.
+If an **exact duplicate** already exists (same content hash), no new memory is created and the response includes a `note` field:
+
+```json
+{
+  "uri": "pressocampus://yoursite.com/memory/abc12345",
+  "name": "Prefers TypeScript over JavaScript",
+  "note": "This memory already exists (exact duplicate). No new memory created."
+}
+```
+
+If the content is **similar but not identical** to existing memories, the new memory is still created but the response includes advisory fields:
+
+```json
+{
+  "uri": "pressocampus://yoursite.com/memory/xyz67890",
+  "name": "Prefers TypeScript",
+  "possible_duplicate": {
+    "uri": "pressocampus://yoursite.com/memory/abc12345",
+    "name": "Prefers TypeScript over JavaScript",
+    "excerpt": "Strongly prefers TypeScript..."
+  }
+}
+```
+
+A `possible_contradiction` field may also appear if a semantically conflicting memory is found.
 
 ### Example
 
@@ -68,8 +91,9 @@ The Soul (`pressocampus://yoursite.com/soul`) and Index (`pressocampus://yoursit
 
 ```json
 {
-  "deleted": true,
-  "uri": "pressocampus://yoursite.com/memory/abc12345"
+  "uri": "pressocampus://yoursite.com/memory/abc12345",
+  "name": "Prefers TypeScript over JavaScript",
+  "deleted": true
 }
 ```
 
@@ -78,8 +102,8 @@ The Soul (`pressocampus://yoursite.com/soul`) and Index (`pressocampus://yoursit
 | Code | Meaning |
 |------|---------|
 | `not_found` | No memory with that URI exists (or you don't own it) |
-| `protected_resource` | Attempted to forget the soul or index |
-| `rate_limited` | Too many write operations — slow down |
+| `soul_protected` | Attempted to forget the soul or index |
+| `rate_limit_exceeded` | Too many write operations — slow down |
 
 ### Example
 
@@ -111,7 +135,6 @@ Update the content of an existing memory.
 
 ```json
 {
-  "updated": true,
   "uri": "pressocampus://yoursite.com/memory/abc12345",
   "etag": "a1b2c3d4"
 }
@@ -131,8 +154,8 @@ To use it:
 | Code | Meaning |
 |------|---------|
 | `not_found` | No memory with that URI |
-| `conflict` | ETag mismatch — memory was updated since you last read it |
-| `rate_limited` | Too many write operations |
+| `etag_conflict` | ETag mismatch — memory was updated since you last read it |
+| `rate_limit_exceeded` | Too many write operations |
 
 ---
 
@@ -154,7 +177,6 @@ Update or create the Soul — the user's persistent identity document.
 
 ```json
 {
-  "updated": true,
   "uri": "pressocampus://yoursite.com/soul",
   "etag": "e5f6a7b8"
 }
@@ -162,7 +184,6 @@ Update or create the Soul — the user's persistent identity document.
 
 ### Notes
 
-- The soul is stored with up to **20 revisions** (other memories cap at 5)
 - If the soul previously had `Status: empty`, that line is removed after the first real update
 - WordPress admin receives an email notification if the soul is updated (configurable)
 
@@ -186,9 +207,9 @@ Update a single `## Section` of the soul. **This is the preferred method for sou
 
 ```json
 {
-  "updated": true,
-  "section": "How I Communicate",
-  "uri": "pressocampus://yoursite.com/soul"
+  "uri": "pressocampus://yoursite.com/soul",
+  "etag": "f1a2b3c4",
+  "section": "How I Communicate"
 }
 ```
 
@@ -216,7 +237,7 @@ AI: [calls update_soul_section]
 
 Search memories by keyword.
 
-**When to use:** When the user asks a question that might be answered by stored memories. Call this before answering factual questions about the user's preferences, history, or decisions.
+**When to use:** When the user asks a question that might be answered by stored memories. Call this before answering factual questions about the user's preferences, history, or decisions. Also call this before `remember` to avoid creating duplicates.
 
 ### Parameters
 
@@ -230,15 +251,19 @@ Search memories by keyword.
 ### Returns
 
 ```json
-[
-  {
-    "uri": "pressocampus://yoursite.com/memory/abc12345",
-    "name": "Prefers TypeScript over JavaScript",
-    "excerpt": "Strongly prefers TypeScript over JavaScript for all projects.",
-    "confidence": "high",
-    "updated_at": "2025-03-15T14:22:00Z"
-  }
-]
+{
+  "results": [
+    {
+      "uri": "pressocampus://yoursite.com/memory/abc12345",
+      "name": "Prefers TypeScript over JavaScript",
+      "excerpt": "Strongly prefers TypeScript over JavaScript for all projects.",
+      "priority": "important",
+      "confidence": "high",
+      "updated_at": "2025-03-15T14:22:00Z"
+    }
+  ],
+  "count": 1
+}
 ```
 
 Results are returned in relevance order.
@@ -266,13 +291,18 @@ Write operations (`remember`, `forget`, `update_memory`, `update_soul`, `update_
 
 Read operations (`resources/list`, `resources/read`, `search_memory`) are limited to **60 per minute** per user.
 
-When a rate limit is hit, the response is:
+When a rate limit is hit, the tool returns an error response:
 
 ```json
 {
-  "code": "rate_limited",
-  "message": "Too many requests. Please slow down.",
-  "retry_after": 30
+  "isError": true,
+  "content": [
+    {
+      "type": "text",
+      "text": "Write rate limit reached (30/min). Please wait a moment and try again."
+    }
+  ],
+  "code": "rate_limit_exceeded"
 }
 ```
 

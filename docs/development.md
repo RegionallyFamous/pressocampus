@@ -255,12 +255,12 @@ test: add coverage for ETag conflict scenario
 1. Add the tool definition to the `tools_list()` method in `class-mcp-endpoint.php`
 2. Add the dispatch case in `dispatch_tool()`
 3. Implement the handler method following the `tool_remember()` pattern
-4. Write tests in `tests/test-mcp-dispatcher.php`
+4. Write tests in `tests/MCPDispatcherTest.php`
 5. Document the tool in `docs/mcp-tools-reference.md`
 
 ### Database migrations
 
-Schema changes go in `class-installer.php` in `run_migrations()`. Use `dbDelta()` for table changes. Increment `DB_VERSION` in `pressocampus.php`.
+Schema changes go in `class-installer.php` in `run_migrations()`. Use `dbDelta()` for table changes. Increment `PRESSOCAMPUS_DB_VERSION` in `pressocampus.php`.
 
 ---
 
