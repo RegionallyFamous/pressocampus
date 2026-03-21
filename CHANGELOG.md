@@ -7,6 +7,20 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.4] — 2026-03-21
+
+### Changed
+
+- **Settings page now uses WordPress core admin styles exclusively.** Replaced 60+ lines of bespoke CSS and all custom component classes with native WordPress equivalents: `nav-tab-wrapper`/`nav-tab` for tabs, `form-table` for settings rows, `wp-list-table widefat` for data tables, `notice notice-*` for alerts, `button`/`button-primary`/`button-link-delete` for actions, and `tablenav` for the History filters and pagination. The page now respects the user's chosen admin colour scheme, dark mode, and accessibility settings correctly. Custom CSS is now minimal — only the tab panel toggle, action badge colours, share dropdown, and toast notification remain as plugin-specific styles.
+- **MCP `initialize` instructions expanded.** The `instructions` field returned on every connection now fully describes what Pressocampus is, enumerates all six tools with usage guidance, and includes an explicit onboarding script for first-time users (greet, explain capabilities, interview, write soul). Previously a single sentence of behavioural hints.
+- **Starter Prompt updated.** The copyable first message on the Connect tab now asks the AI to introduce itself and explain what it can do with the memory store before reading the soul, giving new users an immediate self-guided introduction.
+
+### Fixed
+
+- `PRESSOCAMPUS_VERSION` constant corrected to track the actual release version (was hardcoded to `1.0.0` since initial release).
+
+---
+
 ## [1.0.3] — 2026-03-19
 
 ### Fixed
