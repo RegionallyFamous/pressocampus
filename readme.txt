@@ -3,7 +3,7 @@ Contributors: regionallyfamous
 Tags: ai, memory, mcp, claude, chatgpt
 Requires at least: 6.4
 Tested up to: 6.9
-Stable tag: 1.1.2
+Stable tag: 1.1.3
 Requires PHP: 8.3
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -94,6 +94,11 @@ The Soul is a document the AI writes about itself and its relationship with you 
 Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin checks your setup automatically and tells you if anything needs attention. If you're on nginx (not Apache), no `.htaccess` changes are needed.
 
 == Changelog ==
+
+= 1.1.3 =
+* Updated all docs, admin settings page, and user-facing copy to match the redesigned Soul concept from v1.1.2.
+* Settings page: the Soul section now describes the AI's document rather than a user preferences file.
+* docs/the-soul.md, admin-guide.md, connecting-your-ai.md, mcp-tools-reference.md, memories.md all updated for consistency.
 
 = 1.1.2 =
 * Redesigned the Soul concept: the Soul is now written by the AI, in its own voice, as a record of your relationship — not a settings document you fill out. "My human is a product designer who thinks in systems" rather than "I am a product designer." The AI acknowledges its session discontinuity and writes to future instances of itself.

@@ -2,6 +2,8 @@
 
 Memories are the foundation of Pressocampus. Everything your AI knows about you — except the Soul — lives here.
 
+The Soul is different: it's the AI's own document about itself and your relationship, written in its voice, for future instances of itself. Memories and the Soul are complementary — memories are discrete facts, decisions, and preferences; the Soul is the ongoing account of the relationship as a whole.
+
 ---
 
 ## What is a memory?
@@ -39,7 +41,7 @@ And designed *not* to remember:
 
 - Questions and greetings
 - Casual, transient conversation
-- Things that are already in your Soul
+- Relationship-level observations that belong in the soul (e.g. "this person prefers directness" → update the soul; "they use TypeScript for all projects" → remember it)
 
 ### Duplicate detection
 

@@ -423,15 +423,15 @@ CSS;
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'Your Soul', 'pressocampus' ); ?></h2>
-				<p><?php esc_html_e( 'Your Soul is the most important document in your brain. Every AI reads it first, every single session — before it says a word. It\'s who you are, how you think, and how you want to be worked with. Written once. Travels everywhere.', 'pressocampus' ); ?></p>
+				<h2><?php esc_html_e( 'The Soul', 'pressocampus' ); ?></h2>
+				<p><?php esc_html_e( 'The Soul is a document the AI writes about itself and its relationship with you — in its own voice, for future instances of itself. Every connected AI reads it at session start and builds on it as it learns more. Each session picks up where the last one left off.', 'pressocampus' ); ?></p>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Status', 'pressocampus' ); ?></th>
 						<td>
-							<?php if ( $soul_status === 'empty' ) : ?>
-								<strong style="color:#d63638"><?php esc_html_e( '⚡ Your Soul is waiting.', 'pressocampus' ); ?></strong>
-								<span style="margin-left:6px;color:#50575e"><?php esc_html_e( 'Connect your AI and it will interview you to write it.', 'pressocampus' ); ?></span>
+						<?php if ( $soul_status === 'empty' ) : ?>
+							<strong style="color:#d63638"><?php esc_html_e( '⚡ Soul not yet written.', 'pressocampus' ); ?></strong>
+							<span style="margin-left:6px;color:#50575e"><?php esc_html_e( 'Connect your AI — it will introduce itself and write its soul on first connection.', 'pressocampus' ); ?></span>
 							<?php else : ?>
 								<strong style="color:#00a32a">✓ <?php esc_html_e( 'Soul is live', 'pressocampus' ); ?></strong>
 								<span style="margin-left:8px;color:#50575e">

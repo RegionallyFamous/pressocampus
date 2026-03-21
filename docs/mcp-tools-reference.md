@@ -161,9 +161,9 @@ To use it:
 
 ## `update_soul`
 
-Update or create the Soul — the user's persistent identity document.
+Write or fully rewrite the Soul — the AI's own record of itself and its relationship with this person.
 
-**When to use:** Only for full restructuring of the soul. For targeted section updates, use `update_soul_section` instead. This creates the soul if it doesn't exist.
+**When to use:** First-time setup (when `soul_status` is `"empty"`) or when the soul needs complete restructuring. For targeted updates to a single section, use `update_soul_section` instead. This creates the soul if it doesn't exist.
 
 ### Parameters
 
@@ -193,14 +193,14 @@ Update or create the Soul — the user's persistent identity document.
 
 Update a single `## Section` of the soul. **This is the preferred method for soul updates.**
 
-**When to use:** Whenever the AI learns something new about the user that belongs in the soul. Faster, safer, and less likely to accidentally overwrite other sections than `update_soul`.
+**When to use:** Whenever the AI learns something new about this person — how they think, what they're working on, what they need — that should be captured in the relationship record. Write in the AI's voice: "I've learned they prefer directness." Faster and safer than a full soul rewrite.
 
 ### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `section` | string | Yes | The `## Heading` text, e.g. `"How I Communicate"` |
-| `content` | string | Yes | New body for that section |
+| `section` | string | Yes | The `## Heading` text, e.g. `"How We Work Together"` |
+| `content` | string | Yes | New body for that section (write in the AI's voice) |
 | `context` | string | No | Why you're updating this section |
 
 ### Returns
@@ -224,10 +224,10 @@ Update a single `## Section` of the soul. **This is the preferred method for sou
 ```
 User: "Actually, I hate bullet points. Just write in prose."
 AI: [calls update_soul_section]
-  section: "How I Communicate"
-  content: "Write in clear prose, not bullet points. Lead with the answer,
-  then explain. Short sentences. Active voice. Never pad responses with
-  affirmations — just answer the question."
+  section: "How We Work Together"
+  content: "I've learned they can't stand bullet points — prose only. Lead
+  with the answer, then explain. Short sentences. Active voice. No padding,
+  no affirmations. Direct to the point of blunt is fine."
   context: "User stated preference against bullet points"
 ```
 

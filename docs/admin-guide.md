@@ -42,8 +42,8 @@ Available snippets:
 ### Soul status
 
 A one-line indicator showing:
-- `Soul is empty` — a soul post exists but hasn't been filled in yet (still has the `Status: empty` marker)
-- `Soul exists` — your soul has real content
+- `Soul not yet written` — the AI has not connected and written its soul yet
+- `Soul is live` — the AI has written its soul and the relationship has begun
 
 ### Test Connection
 
@@ -137,9 +137,9 @@ Pressocampus shows in-admin notices for events that need your attention:
 
 | Notice | What it means |
 |--------|---------------|
-| `Your soul needs attention` | The soul was created but still has the `Status: empty` marker |
+| `Soul not yet written` | No AI has connected and written its soul yet — connect a client to start |
 | `Client token expiring soon` | An authorized app's access will expire in the next 7 days |
-| `Soul was updated` | Your AI updated your soul (shown once per soul change) |
+| `Soul was updated` | Your AI updated its soul (shown once per soul change) |
 | `Migration needed` | Your site's domain changed and URIs may be stale |
 
 ---

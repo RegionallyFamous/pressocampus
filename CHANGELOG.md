@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.3] — 2026-03-21
+
+### Changed
+
+- **Documentation fully aligned with the redesigned Soul concept** — every file that referenced the old "user preferences document" framing has been updated.
+  - `docs/admin-guide.md` — soul status indicator and admin notice descriptions updated.
+  - `docs/connecting-your-ai.md` — "first conversation" step updated; multi-client description clarified.
+  - `docs/mcp-tools-reference.md` — `update_soul` and `update_soul_section` descriptions, parameter notes, and examples all rewritten to reflect AI-voice authorship. Example now shows `"How We Work Together"` section with AI-perspective prose.
+  - `docs/memories.md` — intro and "what not to remember" list updated to distinguish soul-appropriate observations from memory-appropriate facts.
+- **Settings page** (`class-settings.php`) — the "Your Soul" section heading and description updated; empty-state text changed from "Connect your AI and it will interview you" to "it will introduce itself and write its soul on first connection."
+
+---
+
 ## [1.1.2] — 2026-03-21
 
 ### Changed
