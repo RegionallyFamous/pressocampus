@@ -439,6 +439,12 @@ parameters:
 			path: includes/class-resource-index.php
 
 		-
+			message: '#^Constant PRESSOCAMPUS_PLUGIN_URL not found\.$#'
+			identifier: constant.notFound
+			count: 1
+			path: includes/class-settings.php
+
+		-
 			message: '#^Function wp_count_posts_revisions not found\.$#'
 			identifier: function.notFound
 			count: 1

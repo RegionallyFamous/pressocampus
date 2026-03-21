@@ -21,6 +21,7 @@ class Settings {
 		private Soul $soul
 	) {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 
 		add_action( 'wp_ajax_pressocampus_test_connection', array( $this, 'ajax_test_connection' ) );
 		add_action( 'wp_ajax_pressocampus_revoke_client', array( $this, 'ajax_revoke_client' ) );
@@ -28,6 +29,85 @@ class Settings {
 		add_action( 'wp_ajax_pressocampus_export_csv', array( $this, 'ajax_export_csv' ) );
 		add_action( 'wp_ajax_pressocampus_save_settings', array( $this, 'ajax_save_settings' ) );
 		add_action( 'wp_ajax_pressocampus_dismiss_notice', array( $this, 'ajax_dismiss_notice' ) );
+	}
+
+	public function enqueue_scripts( string $hook ): void {
+		if ( ! in_array( $hook, array( 'toplevel_page_pressocampus', 'pressocampus_page_pressocampus-history' ), true ) ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'pressocampus-admin-settings',
+			PRESSOCAMPUS_PLUGIN_URL . 'assets/js/admin-settings.js',
+			array(),
+			PRESSOCAMPUS_VERSION,
+			true
+		);
+
+		$mcp_url = home_url( '/brain' );
+
+		$claude_config = wp_json_encode(
+			array(
+				'mcpServers' => array(
+					'pressocampus' => array(
+						'command' => 'npx',
+						'args'    => array( '-y', 'mcp-remote', $mcp_url ),
+					),
+				),
+			),
+			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+		);
+
+		$cursor_config = wp_json_encode(
+			array(
+				'mcpServers' => array(
+					'pressocampus' => array(
+						'url'  => $mcp_url,
+						'type' => 'http',
+					),
+				),
+			),
+			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+		);
+
+		$generic_config = wp_json_encode(
+			array(
+				'mcp' => array(
+					array(
+						'name'     => 'pressocampus',
+						'endpoint' => $mcp_url,
+						'auth'     => 'oauth2',
+					),
+				),
+			),
+			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
+		);
+
+		wp_localize_script(
+			'pressocampus-admin-settings',
+			'pressocampusAdmin',
+			array(
+				'ajaxUrl'       => admin_url( 'admin-ajax.php' ),
+				'nonce'         => wp_create_nonce( 'pressocampus_admin' ),
+				'claudeConfig'  => $claude_config,
+				'cursorConfig'  => $cursor_config,
+				'genericConfig' => $generic_config,
+				'i18n'          => array(
+					'copied'         => __( 'Copied!', 'pressocampus' ),
+					'copiedBtn'      => __( '✓ Copied', 'pressocampus' ),
+					'copyFailed'     => __( 'Copy failed — please copy manually.', 'pressocampus' ),
+					'testing'        => __( 'Testing…', 'pressocampus' ),
+					'testConnection' => __( 'Test Connection', 'pressocampus' ),
+					'unknownError'   => __( 'Unknown error', 'pressocampus' ),
+					'revokeConfirm'  => __( 'Revoke access for', 'pressocampus' ),
+					'clientRevoked'  => __( 'Client revoked.', 'pressocampus' ),
+					'revokeFailed'   => __( 'Revoke failed.', 'pressocampus' ),
+					'saving'         => __( 'Saving…', 'pressocampus' ),
+					'saved'          => __( 'Saved', 'pressocampus' ),
+					'saveFailed'     => __( 'Save failed', 'pressocampus' ),
+				),
+			)
+		);
 	}
 
 	// Menu registration
@@ -100,8 +180,8 @@ CSS;
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'pressocampus' ) );
 		}
 
-		$show_welcome = isset( $_GET['welcome'] ) && $_GET['welcome'] === '1'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$active_tab   = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'connect'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$show_welcome = isset( $_GET['welcome'] ) && wp_unslash( $_GET['welcome'] ) === '1'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$active_tab   = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'connect'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$user_id      = get_current_user_id();
 		$mcp_url      = home_url( '/brain' );
 		$site_name    = get_bloginfo( 'name' );
@@ -264,9 +344,9 @@ CSS;
 								?>
 							</td>
 							<td>
-								<button class="button button-link-delete"
-									onclick="pcRevokeClient(<?php echo esc_attr( $client['id'] ); ?>, <?php echo wp_json_encode( $client['name'] ); ?>, this)"
-								><?php esc_html_e( 'Revoke', 'pressocampus' ); ?></button>
+							<button class="button button-link-delete"
+								onclick="pcRevokeClient(<?php echo wp_json_encode( $client['id'] ); ?>, <?php echo wp_json_encode( $client['name'] ); ?>, this)"
+							><?php esc_html_e( 'Revoke', 'pressocampus' ); ?></button>
 							</td>
 						</tr>
 					<?php endforeach; ?>
@@ -376,8 +456,6 @@ CSS;
 		</div><!-- /wrap -->
 
 		<div id="pc-toast"></div>
-
-		<?php $this->render_settings_js( $mcp_url ); ?>
 		<?php
 	}
 
@@ -391,10 +469,10 @@ CSS;
 		$user_id  = get_current_user_id();
 		$per_page = 50;
         // phpcs:disable WordPress.Security.NonceVerification.Recommended
-		$page          = max( 1, (int) ( $_GET['paged'] ?? 1 ) );
-		$search        = sanitize_text_field( $_GET['pc_search'] ?? '' );
-		$agent_filter  = sanitize_text_field( $_GET['pc_agent'] ?? '' );
-		$action_filter = sanitize_text_field( $_GET['pc_action'] ?? '' );
+		$page          = max( 1, (int) wp_unslash( $_GET['paged'] ?? 1 ) );
+		$search        = sanitize_text_field( wp_unslash( $_GET['pc_search'] ?? '' ) );
+		$agent_filter  = sanitize_text_field( wp_unslash( $_GET['pc_agent'] ?? '' ) );
+		$action_filter = sanitize_text_field( wp_unslash( $_GET['pc_action'] ?? '' ) );
         // phpcs:enable
 
 		$result      = $this->audit_log->get_entries( $user_id, $search, $agent_filter, $action_filter, $page, $per_page );
@@ -571,210 +649,6 @@ CSS;
 
 			<?php endif; ?>
 		</div>
-		<?php
-	}
-
-	// Inline JS for settings page
-
-	private function render_settings_js( string $mcp_url ): void {
-		$claude_config = wp_json_encode(
-			array(
-				'mcpServers' => array(
-					'pressocampus' => array(
-						'command' => 'npx',
-						'args'    => array( '-y', 'mcp-remote', $mcp_url ),
-					),
-				),
-			),
-			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-		);
-
-		$cursor_config = wp_json_encode(
-			array(
-				'mcpServers' => array(
-					'pressocampus' => array(
-						'url'  => $mcp_url,
-						'type' => 'http',
-					),
-				),
-			),
-			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-		);
-
-		$generic_config = wp_json_encode(
-			array(
-				'mcp' => array(
-					array(
-						'name'     => 'pressocampus',
-						'endpoint' => $mcp_url,
-						'auth'     => 'oauth2',
-					),
-				),
-			),
-			JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
-		);
-
-		$ajax_url = admin_url( 'admin-ajax.php' );
-		$nonce    = wp_create_nonce( 'pressocampus_admin' );
-
-		?>
-		<script>
-		(function(){
-			// Tab switching
-			document.querySelectorAll('.nav-tab[data-tab]').forEach(function(btn){
-				btn.addEventListener('click', function(e){
-					e.preventDefault();
-					var tab = this.dataset.tab;
-					document.querySelectorAll('.nav-tab[data-tab]').forEach(function(b){ b.classList.remove('nav-tab-active'); });
-					document.querySelectorAll('.pc-tab-panel').forEach(function(p){ p.classList.remove('active'); });
-					this.classList.add('nav-tab-active');
-					var panel = document.getElementById('pc-tab-' + tab);
-					if (panel) panel.classList.add('active');
-				});
-			});
-
-			// Toast
-			var toastTimer;
-			window.pcToast = function(msg, duration){
-				var el = document.getElementById('pc-toast');
-				if (!el) return;
-				el.textContent = msg;
-				el.style.display = 'block';
-				clearTimeout(toastTimer);
-				toastTimer = setTimeout(function(){ el.style.display = 'none'; }, duration || 2500);
-			};
-
-			// Copy to clipboard
-			window.pcCopy = function(text, btn){
-				navigator.clipboard.writeText(text).then(function(){
-					pcToast('Copied!');
-					if (btn) {
-						var orig = btn.textContent;
-						btn.textContent = '✓ Copied';
-						setTimeout(function(){ btn.textContent = orig; }, 1800);
-					}
-				}).catch(function(){
-					pcToast('Copy failed — please copy manually.');
-				});
-			};
-
-			// Share Brain dropdown
-			window.pcToggleDropdown = function(e){
-				e.stopPropagation();
-				var menu = document.getElementById('pc-share-menu');
-				if (menu) menu.classList.toggle('open');
-			};
-			window.pcCloseDropdown = function(){
-				var menu = document.getElementById('pc-share-menu');
-				if (menu) menu.classList.remove('open');
-			};
-			document.addEventListener('click', pcCloseDropdown);
-
-			// Share config snippets
-			window.pcCopyClaudeConfig = function(){
-				pcCopy(<?php echo wp_json_encode( $claude_config ); ?>, null);
-			};
-			window.pcCopyCursorConfig = function(){
-				pcCopy(<?php echo wp_json_encode( $cursor_config ); ?>, null);
-			};
-			window.pcCopyGenericConfig = function(){
-				pcCopy(<?php echo wp_json_encode( $generic_config ); ?>, null);
-			};
-
-			// Test connection
-			window.pcTestConnection = function(){
-				var btn = document.getElementById('pc-test-btn');
-				var result = document.getElementById('pc-test-result');
-				btn.disabled = true;
-				btn.textContent = '<?php echo esc_js( __( 'Testing…', 'pressocampus' ) ); ?>';
-				result.textContent = '';
-				result.style.color = '';
-
-				fetch(<?php echo wp_json_encode( $ajax_url ); ?>, {
-					method: 'POST',
-					headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-					body: 'action=pressocampus_test_connection&_wpnonce=' + <?php echo wp_json_encode( $nonce ); ?>
-				})
-				.then(function(r){ return r.json(); })
-				.then(function(data){
-					btn.disabled = false;
-					btn.textContent = '<?php echo esc_js( __( 'Test Connection', 'pressocampus' ) ); ?>';
-					if (data.success) {
-						result.textContent = '✓ ' + data.data.message;
-						result.style.color = '#00a32a';
-					} else {
-						result.textContent = '✗ ' + (data.data ? data.data.message : '<?php echo esc_js( __( 'Unknown error', 'pressocampus' ) ); ?>');
-						result.style.color = '#d63638';
-					}
-				})
-				.catch(function(err){
-					btn.disabled = false;
-					btn.textContent = '<?php echo esc_js( __( 'Test Connection', 'pressocampus' ) ); ?>';
-					result.textContent = '✗ ' + err.message;
-					result.style.color = '#d63638';
-				});
-			};
-
-			// Revoke client
-			window.pcRevokeClient = function(id, name, btn){
-				if (!confirm('<?php echo esc_js( __( 'Revoke access for', 'pressocampus' ) ); ?> "' + name + '"?')) return;
-				btn.disabled = true;
-
-				fetch(<?php echo wp_json_encode( $ajax_url ); ?>, {
-					method: 'POST',
-					headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-					body: 'action=pressocampus_revoke_client&client_id=' + id + '&_wpnonce=' + <?php echo wp_json_encode( $nonce ); ?>
-				})
-				.then(function(r){ return r.json(); })
-				.then(function(data){
-					if (data.success) {
-						var row = btn.closest('tr');
-						if (row) row.remove();
-						pcToast('<?php echo esc_js( __( 'Client revoked.', 'pressocampus' ) ); ?>');
-					} else {
-						btn.disabled = false;
-						pcToast('<?php echo esc_js( __( 'Revoke failed.', 'pressocampus' ) ); ?>');
-					}
-				})
-				.catch(function(){
-					btn.disabled = false;
-					pcToast('<?php echo esc_js( __( 'Revoke failed.', 'pressocampus' ) ); ?>');
-				});
-			};
-
-			// Save settings
-			window.pcSaveSettings = function(e){
-				e.preventDefault();
-				var form   = document.getElementById('pc-settings-form');
-				var result = document.getElementById('pc-save-result');
-				var data   = new FormData(form);
-				data.append('action', 'pressocampus_save_settings');
-
-				result.textContent = '<?php echo esc_js( __( 'Saving…', 'pressocampus' ) ); ?>';
-				result.style.color = '#888';
-
-				fetch(<?php echo wp_json_encode( $ajax_url ); ?>, {
-					method: 'POST',
-					body: new URLSearchParams(data)
-				})
-				.then(function(r){ return r.json(); })
-				.then(function(resp){
-					if (resp.success) {
-						result.textContent = '✓ <?php echo esc_js( __( 'Saved', 'pressocampus' ) ); ?>';
-						result.style.color = '#00a32a';
-					} else {
-						result.textContent = '✗ <?php echo esc_js( __( 'Save failed', 'pressocampus' ) ); ?>';
-						result.style.color = '#d63638';
-					}
-					setTimeout(function(){ result.textContent = ''; }, 3000);
-				})
-				.catch(function(){
-					result.textContent = '✗ <?php echo esc_js( __( 'Save failed', 'pressocampus' ) ); ?>';
-					result.style.color = '#d63638';
-				});
-			};
-		})();
-		</script>
 		<?php
 	}
 
@@ -1091,7 +965,7 @@ CSS;
 
         // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$rows = $wpdb->get_results(
-			$wpdb->prepare( "SELECT id, name, created_at, last_used FROM {$table} WHERE user_id = %d ORDER BY created_at DESC", $user_id ),
+			$wpdb->prepare( "SELECT id, name, created_at, last_used_at AS last_used FROM {$table} WHERE user_id = %d ORDER BY created_at DESC", $user_id ),
 			ARRAY_A
 		);
 
