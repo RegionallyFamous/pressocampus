@@ -1,6 +1,6 @@
 <?php
 /**
- * MCP Protocol 2025-03-26 endpoint — Streamable HTTP / JSON-RPC 2.0.
+ * MCP Protocol 2025-11-25 endpoint — Streamable HTTP / JSON-RPC 2.0.
  *
  * Registered at: POST /wp-json/pressocampus/v1/mcp
  *
@@ -21,7 +21,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class MCPEndpoint {
 
-	private const MCP_VERSION = '2025-03-26';
+	private const MCP_VERSION = '2025-11-25';
+
+	/** Protocol versions this server accepts from clients. */
+	private const SUPPORTED_VERSIONS = array( '2025-03-26', '2025-11-25' );
 
 	public function __construct(
 		private Auth $auth,
@@ -45,6 +48,17 @@ class MCPEndpoint {
 			)
 		);
 
+		// Spec §Transports: server MUST return 405 for GET if SSE is not supported.
+		register_rest_route(
+			'pressocampus/v1',
+			'/mcp',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( $this, 'handle_get' ),
+				'permission_callback' => '__return_true',
+			)
+		);
+
 		register_rest_route(
 			'pressocampus/v1',
 			'/mcp',
@@ -57,7 +71,28 @@ class MCPEndpoint {
 	}
 
 	public function handle( \WP_REST_Request $request ): \WP_REST_Response {
-		$this->set_cors_headers();
+		if ( ! $this->set_cors_headers() ) {
+			// Origin header present but not in the allowed list — reject per spec §Transports.
+			return new \WP_REST_Response( null, 403 );
+		}
+
+		// Validate MCP-Protocol-Version header on post-initialize requests.
+		// The spec requires 400 for unsupported/invalid values.
+		$client_version = $request->get_header( 'MCP-Protocol-Version' );
+		if ( $client_version !== null && $client_version !== '' && ! in_array( $client_version, self::SUPPORTED_VERSIONS, true ) ) {
+			return new \WP_REST_Response(
+				array(
+					'jsonrpc' => '2.0',
+					'id'      => null,
+					'error'   => array(
+						'code'    => -32600,
+						'message' => 'Unsupported MCP-Protocol-Version: ' . $client_version,
+						'data'    => array( 'supported' => self::SUPPORTED_VERSIONS ),
+					),
+				),
+				400
+			);
+		}
 
 		if ( ! Auth::get_current_user_id() ) {
 			$response = $this->error_response(
@@ -176,7 +211,16 @@ class MCPEndpoint {
 		return $envelope;
 	}
 
-	private function method_initialize( array $params ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- MCP protocol; $params required by internal dispatch contract
+	private function method_initialize( array $params ): array {
+		// Negotiate the protocol version: echo back the client's requested version
+		// if we support it, otherwise respond with our latest supported version.
+		$requested_version  = isset( $params['protocolVersion'] ) && is_string( $params['protocolVersion'] )
+			? $params['protocolVersion']
+			: '';
+		$negotiated_version = in_array( $requested_version, self::SUPPORTED_VERSIONS, true )
+			? $requested_version
+			: self::MCP_VERSION;
+
 		$user_id     = Auth::get_current_user_id();
 		$client_name = Auth::get_current_client_name();
 		$host        = Auth::get_site_host();
@@ -222,9 +266,10 @@ class MCPEndpoint {
 		}
 
 		return array(
-			'protocolVersion' => self::MCP_VERSION,
+			'protocolVersion' => $negotiated_version,
 			'serverInfo'      => array(
 				'name'    => 'Pressocampus — Your Memory Store',
+				'title'   => 'Pressocampus — Your Memory Store',
 				'version' => PRESSOCAMPUS_VERSION,
 			),
 			'instructions'    => $instructions,
@@ -1279,6 +1324,7 @@ class MCPEndpoint {
 
 	private function tool_success( array $data ): array {
 		return array(
+			'isError' => false,
 			'content' => array(
 				array(
 					'type' => 'text',
@@ -1340,8 +1386,18 @@ class MCPEndpoint {
 		);
 	}
 
-	private function set_cors_headers(): void {
+	/**
+	 * Set CORS and content-type response headers.
+	 *
+	 * Returns true when the request should proceed, false when the Origin
+	 * header is present but not in the allowed list. Callers MUST return
+	 * HTTP 403 when this method returns false (MCP spec §Transports — DNS
+	 * rebinding protection).
+	 */
+	private function set_cors_headers(): bool {
 		$origin = esc_url_raw( wp_unslash( $_SERVER['HTTP_ORIGIN'] ?? '' ) );
+
+		header( 'Content-Type: application/json; charset=utf-8' );
 
 		if ( $origin !== '' ) {
 			$settings        = get_option( 'pressocampus_settings', array() );
@@ -1356,16 +1412,30 @@ class MCPEndpoint {
 				header( 'Access-Control-Allow-Origin: ' . $origin );
 				header( 'Access-Control-Allow-Credentials: true' );
 				header( 'Vary: Origin' );
+			} else {
+				// Origin present but not allowed — caller must respond with 403.
+				return false;
 			}
 		}
 
-		header( 'Access-Control-Allow-Methods: POST, OPTIONS' );
-		header( 'Access-Control-Allow-Headers: Authorization, Content-Type' );
-		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Access-Control-Allow-Methods: POST, GET, OPTIONS' );
+		header( 'Access-Control-Allow-Headers: Authorization, Content-Type, MCP-Protocol-Version, MCP-Session-Id' );
+
+		return true;
+	}
+
+	public function handle_get( \WP_REST_Request $request ): \WP_REST_Response { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- WP REST callback; $request required by register_rest_route
+		if ( ! $this->set_cors_headers() ) {
+			return new \WP_REST_Response( null, 403 );
+		}
+		// SSE not supported; signal clients to fall back to plain JSON responses.
+		return new \WP_REST_Response( null, 405 );
 	}
 
 	public function handle_cors_preflight( \WP_REST_Request $request ): \WP_REST_Response { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- WP REST callback; $request required by register_rest_route
-		$this->set_cors_headers();
+		if ( ! $this->set_cors_headers() ) {
+			return new \WP_REST_Response( null, 403 );
+		}
 		return new \WP_REST_Response( null, 204 );
 	}
 }
