@@ -650,8 +650,8 @@ class MCPEndpoint {
 					),
 				),
 				array(
-				'name'        => 'update_soul',
-				'description' => "Replace the user's full profile document — their identity, values, communication style, and working preferences. Stored on their own site and read at the start of every session. Use update_soul_section for targeted edits; use this only for full restructuring or initial setup. Creates the profile if it doesn't exist yet.",
+					'name'        => 'update_soul',
+					'description' => "Replace the user's full profile document — their identity, values, communication style, and working preferences. Stored on their own site and read at the start of every session. Use update_soul_section for targeted edits; use this only for full restructuring or initial setup. Creates the profile if it doesn't exist yet.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
@@ -672,8 +672,8 @@ class MCPEndpoint {
 					),
 				),
 				array(
-				'name'        => 'update_soul_section',
-				'description' => "Update a single ## section of the user's profile without touching the rest. Use when the user updates their communication preferences, personal facts, or how they like to work. Prefer this over update_soul for any targeted change.",
+					'name'        => 'update_soul_section',
+					'description' => "Update a single ## section of the user's profile without touching the rest. Use when the user updates their communication preferences, personal facts, or how they like to work. Prefer this over update_soul for any targeted change.",
 					'inputSchema' => array(
 						'type'       => 'object',
 						'properties' => array(
