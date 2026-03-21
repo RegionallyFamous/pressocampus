@@ -36,6 +36,11 @@ class Plugin {
 			Installer::run_migrations();
 		}
 
+		// Auto-generate the RSA key pair if it is missing.  This covers sites
+		// where activation completed but the key generation silently failed
+		// (e.g. openssl was enabled later, or the option was accidentally deleted).
+		Installer::maybe_generate_rsa_keys();
+
 		$this->cache          = new Cache();
 		$this->resource_index = new ResourceIndex();
 		$this->soul           = new Soul( $this->resource_index );

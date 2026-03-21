@@ -1124,23 +1124,36 @@ CSS;
 			'detail' => 'Stored: ' . $db_ver . '  Expected: ' . PRESSOCAMPUS_DB_VERSION,
 		);
 
-		// 5. RSA key pair
-		$has_priv = get_option( 'pressocampus_rsa_private_key' ) !== false && get_option( 'pressocampus_rsa_private_key' ) !== '';
-		$has_pub  = get_option( 'pressocampus_rsa_public_key' ) !== false && get_option( 'pressocampus_rsa_public_key' ) !== '';
+		// 5. RSA key pair — auto-generate now if missing so subsequent checks work
+		Installer::maybe_generate_rsa_keys();
+		$has_priv = (string) get_option( 'pressocampus_rsa_private_key', '' ) !== '';
+		$has_pub  = (string) get_option( 'pressocampus_rsa_public_key', '' ) !== '';
 		$rsa_ok   = $has_priv && $has_pub;
 		$checks[] = array(
 			'label'  => 'RSA key pair',
 			'pass'   => $rsa_ok,
-			'detail' => $rsa_ok ? 'Present' : ( ! $has_priv ? 'Private key missing' : 'Public key missing' ),
+			'detail' => $rsa_ok ? 'Present (just generated if previously missing)' : ( ! $has_priv ? 'FAILED to generate — is PHP OpenSSL working?' : 'Public key missing' ),
 		);
 
-		// 6. Rewrite rule compiled
-		$rules    = (array) get_option( 'rewrite_rules', array() );
-		$rule_ok  = isset( $rules['^brain/?$'] );
+		// 6. Rewrite rules compiled (brain + wp-json)
+		$rules     = (array) get_option( 'rewrite_rules', array() );
+		$brain_ok  = isset( $rules['^brain/?$'] );
+		$wpjson_ok = false;
+		foreach ( array_keys( $rules ) as $pattern ) {
+			if ( str_contains( (string) $pattern, 'wp-json' ) ) {
+				$wpjson_ok = true;
+				break;
+			}
+		}
 		$checks[] = array(
 			'label'  => '/brain rewrite rule',
-			'pass'   => $rule_ok,
-			'detail' => $rule_ok ? 'Compiled in WordPress rewrite table' : 'NOT found — go to Settings → Permalinks and save once to rebuild',
+			'pass'   => $brain_ok,
+			'detail' => $brain_ok ? 'Compiled in WordPress rewrite table' : 'NOT found — go to Settings → Permalinks and save once to rebuild',
+		);
+		$checks[] = array(
+			'label'  => '/wp-json rewrite rule',
+			'pass'   => $wpjson_ok,
+			'detail' => $wpjson_ok ? 'Compiled in WordPress rewrite table' : 'NOT found — the REST API pretty-URL may not work; try saving Permalinks',
 		);
 
 		// 7. Well-known: oauth-authorization-server (loopback GET)
@@ -1246,56 +1259,17 @@ CSS;
 			);
 		}
 
-		// 10. DCR endpoint reachable (HEAD — no actual registration)
-		$reg_url  = rest_url( 'pressocampus/v1/oauth/register' );
-		$reg_resp = wp_remote_head(
-			$reg_url,
-			array(
-				'timeout'   => 8,
-				'sslverify' => false,
-			)
-		);
-		if ( is_wp_error( $reg_resp ) ) {
-			$checks[] = array(
-				'label'  => 'OAuth register endpoint',
-				'pass'   => false,
-				'detail' => 'HTTP error: ' . $reg_resp->get_error_message(),
-			);
-		} else {
-			$reg_code = wp_remote_retrieve_response_code( $reg_resp );
-			// HEAD on a POST-only route returns 405 (Method Not Allowed) — that's fine.
-			$reg_ok   = in_array( $reg_code, array( 200, 201, 405 ), true );
-			$checks[] = array(
-				'label'  => 'OAuth register endpoint',
-				'pass'   => $reg_ok,
-				'detail' => 'HTTP ' . $reg_code . ( $reg_ok ? ' (reachable)' : ' — may be blocked by security plugin' ),
-			);
-		}
+		// 10. OAuth register endpoint — test pretty URL, fall back to ?rest_route= form
+		$reg_pretty = rest_url( 'pressocampus/v1/oauth/register' );
+		$reg_qs     = add_query_arg( 'rest_route', '/pressocampus/v1/oauth/register', home_url( '/' ) );
+
+		$this->check_rest_endpoint( $checks, 'OAuth register endpoint', $reg_pretty, $reg_qs );
 
 		// 11. Token endpoint reachable
-		$tok_url  = rest_url( 'pressocampus/v1/oauth/token' );
-		$tok_resp = wp_remote_head(
-			$tok_url,
-			array(
-				'timeout'   => 8,
-				'sslverify' => false,
-			)
-		);
-		if ( is_wp_error( $tok_resp ) ) {
-			$checks[] = array(
-				'label'  => 'OAuth token endpoint',
-				'pass'   => false,
-				'detail' => 'HTTP error: ' . $tok_resp->get_error_message(),
-			);
-		} else {
-			$tok_code = wp_remote_retrieve_response_code( $tok_resp );
-			$tok_ok   = in_array( $tok_code, array( 200, 201, 405 ), true );
-			$checks[] = array(
-				'label'  => 'OAuth token endpoint',
-				'pass'   => $tok_ok,
-				'detail' => 'HTTP ' . $tok_code . ( $tok_ok ? ' (reachable)' : ' — may be blocked by security plugin' ),
-			);
-		}
+		$tok_pretty = rest_url( 'pressocampus/v1/oauth/token' );
+		$tok_qs     = add_query_arg( 'rest_route', '/pressocampus/v1/oauth/token', home_url( '/' ) );
+
+		$this->check_rest_endpoint( $checks, 'OAuth token endpoint', $tok_pretty, $tok_qs );
 
 		wp_send_json_success(
 			array(
@@ -1307,6 +1281,64 @@ CSS;
 	}
 
 	// phpcs:enable WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+
+	/**
+	 * Test a REST endpoint via HEAD, trying the pretty URL first then the ?rest_route= form.
+	 * Populates $checks with one result entry.
+	 *
+	 * HEAD on a POST-only route legitimately returns 405 (Method Not Allowed) — that counts as reachable.
+	 *
+	 * @param array<int,array<string,mixed>> $checks   Reference to the checks array.
+	 * @param string                         $label    Human-readable label for this check.
+	 * @param string                         $pretty   Pretty URL (e.g. /wp-json/namespace/route).
+	 * @param string                         $fallback Query-string URL (e.g. /?rest_route=/namespace/route).
+	 */
+	private function check_rest_endpoint( array &$checks, string $label, string $pretty, string $fallback ): void {
+		$opts = array(
+			'timeout'   => 8,
+			'sslverify' => false,
+			'method'    => 'HEAD',
+		);
+
+		$resp = wp_remote_request( $pretty, $opts );
+		$code = is_wp_error( $resp ) ? 0 : wp_remote_retrieve_response_code( $resp );
+
+		// 200/201/405 on the pretty URL — all good.
+		if ( in_array( $code, array( 200, 201, 405 ), true ) ) {
+			$checks[] = array(
+				'label'  => $label,
+				'pass'   => true,
+				'detail' => 'HTTP ' . $code . ' (pretty URL reachable: ' . $pretty . ')',
+			);
+			return;
+		}
+
+		// Pretty URL failed — try ?rest_route= fallback.
+		$fb_resp = wp_remote_request( $fallback, $opts );
+		$fb_code = is_wp_error( $fb_resp ) ? 0 : wp_remote_retrieve_response_code( $fb_resp );
+
+		if ( in_array( $fb_code, array( 200, 201, 405 ), true ) ) {
+			$checks[] = array(
+				'label'  => $label,
+				'pass'   => false,
+				'warn'   => true,
+				'detail' => 'Pretty URL returned HTTP ' . $code . ' but ?rest_route= fallback works (HTTP ' . $fb_code . '). '
+					. 'Your Nginx config is not routing /wp-json/ to WordPress. '
+					. 'Add: location /wp-json/ { try_files $uri $uri/ /index.php$is_args$args; }',
+			);
+			return;
+		}
+
+		// Both failed.
+		$pretty_detail = is_wp_error( $resp ) ? $resp->get_error_message() : 'HTTP ' . $code;
+		$fb_detail     = is_wp_error( $fb_resp ) ? $fb_resp->get_error_message() : 'HTTP ' . $fb_code;
+		$checks[]      = array(
+			'label'  => $label,
+			'pass'   => false,
+			'detail' => 'Pretty URL: ' . $pretty_detail . '  ·  ?rest_route= fallback: ' . $fb_detail
+				. '  ·  REST API may be disabled by a security plugin',
+		);
+	}
 
 	// Helpers
 

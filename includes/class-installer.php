@@ -52,27 +52,7 @@ class Installer {
 			wp_die( esc_html__( 'Pressocampus requires the PHP OpenSSL extension. Please enable it in your server configuration, then reactivate the plugin.', 'pressocampus' ) );
 		}
 
-		if ( ! get_option( 'pressocampus_rsa_private_key' ) ) {
-			$config      = array(
-				'digest_alg'       => 'sha256',
-				'private_key_bits' => 2048,
-				'private_key_type' => OPENSSL_KEYTYPE_RSA,
-			);
-			$res         = openssl_pkey_new( $config );
-			$private_key = '';
-			if ( $res && openssl_pkey_export( $res, $private_key ) && $private_key !== '' ) {
-				$public_key_details = openssl_pkey_get_details( $res );
-				if ( is_array( $public_key_details ) && isset( $public_key_details['key'] ) ) {
-					update_option( 'pressocampus_rsa_private_key', $private_key );
-					update_option( 'pressocampus_rsa_public_key', $public_key_details['key'] );
-				}
-			} else {
-				update_option(
-					'pressocampus_migration_error',
-					'Failed to generate or export RSA key pair. OAuth will not work until this is resolved. Check that the openssl extension is available.'
-				);
-			}
-		}
+		self::maybe_generate_rsa_keys();
 
 		self::run_migrations();
 
@@ -102,6 +82,40 @@ class Installer {
 		wp_clear_scheduled_hook( 'pressocampus_expire_memories' );
 		wp_clear_scheduled_hook( 'pressocampus_purge_audit_log' );
 		flush_rewrite_rules();
+	}
+
+	/**
+	 * Generate an RSA key pair and store it if one does not already exist.
+	 * Safe to call on every boot — is a no-op when the key is already present.
+	 */
+	public static function maybe_generate_rsa_keys(): void {
+		if ( ! extension_loaded( 'openssl' ) ) {
+			return;
+		}
+
+		if ( get_option( 'pressocampus_rsa_private_key' ) ) {
+			return;
+		}
+
+		$config      = array(
+			'digest_alg'       => 'sha256',
+			'private_key_bits' => 2048,
+			'private_key_type' => OPENSSL_KEYTYPE_RSA,
+		);
+		$res         = openssl_pkey_new( $config );
+		$private_key = '';
+		if ( $res && openssl_pkey_export( $res, $private_key ) && $private_key !== '' ) {
+			$public_key_details = openssl_pkey_get_details( $res );
+			if ( is_array( $public_key_details ) && isset( $public_key_details['key'] ) ) {
+				update_option( 'pressocampus_rsa_private_key', $private_key );
+				update_option( 'pressocampus_rsa_public_key', $public_key_details['key'] );
+			}
+		} else {
+			update_option(
+				'pressocampus_migration_error',
+				'Failed to generate or export RSA key pair. OAuth will not work until this is resolved. Check that the openssl extension is available.'
+			);
+		}
 	}
 
 	public static function run_migrations(): void {

@@ -7,6 +7,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.14] — 2026-03-21
+
+### Fixed
+
+- **RSA key pair is now auto-generated on every boot** if the option is missing. Extracted into `Installer::maybe_generate_rsa_keys()`, called from both `Installer::activate()` and `Plugin::__construct()`. Previously a missing key would only be regenerated when the OAuth server was first used (too late for a clean token exchange).
+- **Diagnostics: auto-generate RSA keys inline** if missing at the time the diagnostic is run, so re-running diagnostics immediately shows the corrected state.
+- **Diagnostics: check `/wp-json/` rewrite rule** in addition to the `/brain` rule.
+- **Diagnostics: test `?rest_route=` query-string fallback** for OAuth endpoints. If the pretty `/wp-json/` URL returns 404 but the query-string form works, the report now says exactly what Nginx `location` block is needed to fix the routing.
+
+---
+
 ## [1.0.13] — 2026-03-21
 
 ### Fixed
