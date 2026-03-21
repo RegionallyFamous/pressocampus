@@ -331,8 +331,9 @@ class ResourceIndex {
 	public function mark_dirty( int $user_id ): void {
 		set_transient( 'pressocampus_index_dirty_' . $user_id, 1, DAY_IN_SECONDS );
 
-		// Invalidate the cached resources/list response for this user.
+		// Invalidate cached responses that depend on the memory set.
 		wp_cache_delete( 'pc_resources_list_' . $user_id, 'pressocampus' );
+		wp_cache_delete( 'pc_user_groups_' . $user_id, 'pressocampus' );
 
 		// Schedule an async rebuild via WP-Cron (fires on the next page load).
 		// wp_next_scheduled() deduplicates: only one rebuild event per user at a time.
@@ -376,9 +377,17 @@ class ResourceIndex {
 	/**
 	 * Return an array of distinct group taxonomy slugs for a user.
 	 *
+	 * Cached for 5 minutes; invalidated by mark_dirty() on any write.
+	 *
 	 * @return string[]
 	 */
 	public function get_user_groups( int $user_id ): array {
+		$cache_key = 'pc_user_groups_' . $user_id;
+		$cached    = wp_cache_get( $cache_key, 'pressocampus' );
+		if ( false !== $cached ) {
+			return (array) $cached;
+		}
+
 		$terms = get_terms(
 			array(
 				'taxonomy'   => PRESSOCAMPUS_TAXONOMY,
@@ -388,11 +397,11 @@ class ResourceIndex {
 			)
 		);
 
-		if ( is_wp_error( $terms ) || ! is_array( $terms ) ) {
-			return array();
-		}
+		$result = ( is_wp_error( $terms ) || ! is_array( $terms ) ) ? array() : $terms;
 
-		return $terms;
+		wp_cache_set( $cache_key, $result, 'pressocampus', 300 );
+
+		return $result;
 	}
 
 	/**

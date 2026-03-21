@@ -7,6 +7,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.18] — 2026-03-21
+
+### Added
+
+- **`list_memories` tool** — browse all stored memories without needing a search query. Supports `group` filter, `sort` (`date_desc` / `date_asc` / `name_asc`), `limit` (up to 50), and cursor-based pagination. Returns URI, name, group, timestamps, priority, confidence, and a 20-word excerpt per item. Complements `search_memory` for periodic audits and session warm-up.
+- **Session Briefing resource** (`pressocampus://[host]/briefing`) — a virtual, read-only resource pinned at the top of every `resources/list` response. Reading it generates a fresh Markdown document containing: memory count and group breakdown, soul status, critical-priority memories with excerpts, memories updated in the last 7 days, and memories not touched in 6+ months (stale candidates for review). Referenced by name in the system `instructions` alongside the soul snapshot.
+- **`tag_memory` tool** — change an existing memory's group and/or priority without touching its content. Useful for reorganising memories as they accumulate, merging orphaned items into groups, or promoting key memories to `critical`. Guards against accidentally retagging the soul or index.
+- **Inline related content in `resources/read`** — when a memory has `related` URIs, the read response now includes `annotations.related_content`: an array of `{uri, name, excerpt}` for each linked memory that belongs to the same user. The AI no longer needs to make N extra read calls to follow relationships.
+
+### Changed
+
+- `instructions` field updated to mention `list_memories`, `tag_memory`, and the Session Briefing resource URI.
+
+---
+
 ## [1.0.17] — 2026-03-21
 
 ### Changed

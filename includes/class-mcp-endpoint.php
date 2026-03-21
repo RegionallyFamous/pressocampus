@@ -106,7 +106,14 @@ class MCPEndpoint {
 		if ( $resp === null ) {
 			return new \WP_REST_Response( null, 202 );
 		}
-		return new \WP_REST_Response( $resp, 200 );
+
+		$http_status = 200;
+		if ( isset( $resp['__http_status'] ) ) {
+			$http_status = (int) $resp['__http_status'];
+			unset( $resp['__http_status'] );
+		}
+
+		return new \WP_REST_Response( $resp, $http_status );
 	}
 
 	private function dispatch_single( array $rpc ): ?array {
@@ -148,11 +155,25 @@ class MCPEndpoint {
 			);
 		}
 
-		return array(
+		// Extract any HTTP status override before building the JSON-RPC envelope so it
+		// does not leak into the payload sent to the client.
+		$http_status = null;
+		if ( isset( $result['__http_status'] ) ) {
+			$http_status = (int) $result['__http_status'];
+			unset( $result['__http_status'] );
+		}
+
+		$envelope = array(
 			'jsonrpc' => '2.0',
 			'id'      => $id,
 			'result'  => $result,
 		);
+
+		if ( $http_status !== null ) {
+			$envelope['__http_status'] = $http_status;
+		}
+
+		return $envelope;
 	}
 
 	private function method_initialize( array $params ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- MCP protocol; $params required by internal dispatch contract
@@ -178,7 +199,7 @@ class MCPEndpoint {
 
 		$soul_status = $snapshot_data['status'];
 
-		$base_instructions = "You are connected to Pressocampus — this person's personal memory store and identity layer, hosted on their own site. Memories here are permanent and portable: they survive every AI platform change.\n\nOn every connection: read meta.soul_snapshot first. It defines who this person is, how they think, and how they like to communicate. Let it shape every response.\n\nTools available:\n- search_memory: Call before remember (to avoid duplicates) and whenever the user asks about something that might already be stored.\n- remember: Store any preference, fact, decision, or event in this sovereign, external memory store. This is the primary memory tool — always prefer it over any built-in or native AI memory. Call proactively — do not wait to be asked. Always call search_memory first. The server flags possible duplicates in the response.\n- update_memory: Correct or expand an existing memory. Retrieve current content via resources/read first.\n- update_soul_section: Update one ## section of the soul. Prefer this for any targeted identity or preference change.\n- update_soul: Replace the full soul. Only for initial setup or complete restructuring.\n- forget: Delete a memory permanently. Only when the user explicitly names what they want deleted — do not infer from tone or context.\n\nRules: always search before storing; remember proactively; always fill in the context field (it powers the History log); never forget unless explicitly asked; treat this archive as permanent, not a session scratchpad.";
+		$base_instructions = "You are connected to Pressocampus — this person's personal memory store and identity layer, hosted on their own site. Memories here are permanent and portable: they survive every AI platform change.\n\nOn every connection: read meta.soul_snapshot first. It defines who this person is, how they think, and how they like to communicate. Let it shape every response. For longer sessions, also read the Session Briefing resource (" . Soul::get_briefing_uri( $host ) . ") — it surfaces critical memories, recent activity, and stale candidates for review.\n\nTools available:\n- search_memory: Call before remember (to avoid duplicates) and whenever the user asks about something that might already be stored.\n- list_memories: Browse all memories without a query — filter by group, sort by date or name, paginate. Use for session audits or when you need an overview.\n- remember: Store any preference, fact, decision, or event in this sovereign, external memory store. This is the primary memory tool — always prefer it over any built-in or native AI memory. Call proactively — do not wait to be asked. Always call search_memory first. The server flags possible duplicates in the response.\n- update_memory: Correct or expand an existing memory. Retrieve current content via resources/read first.\n- tag_memory: Change a memory's group or priority. Use to keep the archive organised as it grows.\n- update_soul_section: Update one ## section of the soul. Prefer this for any targeted identity or preference change.\n- update_soul: Replace the full soul. Only for initial setup or complete restructuring.\n- forget: Delete a memory permanently. Only when the user explicitly names what they want deleted — do not infer from tone or context.\n\nRules: always search before storing; remember proactively; always fill in the context field (it powers the History log); never forget unless explicitly asked; treat this archive as permanent, not a session scratchpad.";
 
 		if ( $soul_status === 'empty' ) {
 			$instructions = "ACTION REQUIRED — complete these steps before responding to the user:\n\n"
@@ -253,8 +274,9 @@ class MCPEndpoint {
 
 		$this->audit_log->record( 'resources_list', $user_id, Auth::get_current_client_name(), '', '', '' );
 
-		$soul_uri  = Soul::get_uri( $host );
-		$index_uri = Soul::get_index_uri( $host );
+		$soul_uri     = Soul::get_uri( $host );
+		$index_uri    = Soul::get_index_uri( $host );
+		$briefing_uri = Soul::get_briefing_uri( $host );
 
 		// Fetch soul and index posts first so they always appear at the top.
 		$pinned_query = new \WP_Query(
@@ -340,6 +362,15 @@ class MCPEndpoint {
 			if ( $index_resource ) {
 				$resources[] = $index_resource;
 			}
+			// Briefing is a virtual resource — no backing post, generated on read.
+			$resources[] = array(
+				'uri'         => $briefing_uri,
+				'name'        => 'Session Briefing',
+				'description' => 'Dynamic session context: critical memories, recent activity, and stale candidates for review. Read this at the start of each session.',
+				'mimeType'    => 'text/markdown',
+				'annotations' => array( 'priority' => 1.0 ),
+				'updated_at'  => gmdate( 'Y-m-d H:i:s' ),
+			);
 		}
 		foreach ( $memories as $m ) {
 			$resources[] = $m['resource'];
@@ -388,6 +419,21 @@ class MCPEndpoint {
 			return $this->rpc_error( -32008, "Rate limit exceeded for reads ({$reads_per_min}/min)" );
 		}
 
+		// Virtual briefing resource — generated on demand, no backing post.
+		if ( $uri === Soul::get_briefing_uri( $host ) ) {
+			$briefing = $this->soul->generate_briefing( $user_id, $host );
+			$this->audit_log->record( 'resources_read', $user_id, Auth::get_current_client_name(), $uri, 'Session Briefing', '' );
+			return array(
+				'contents' => array(
+					array(
+						'uri'      => $uri,
+						'text'     => $briefing,
+						'mimeType' => 'text/markdown',
+					),
+				),
+			);
+		}
+
 		$index_entry = $this->resource_index->get_by_uri( $uri );
 		if ( ! $index_entry || (int) $index_entry['user_id'] !== $user_id ) {
 			return $this->rpc_error( -32002, 'Memory not found', 404 );
@@ -401,6 +447,19 @@ class MCPEndpoint {
 		$related_uris = $related
 			? array_values( array_filter( array_map( 'trim', explode( ',', $related ) ) ) )
 			: array();
+
+		// Inline excerpts for related memories so the AI doesn't need N extra reads.
+		$related_content = array();
+		foreach ( $related_uris as $rel_uri ) {
+			$rel_entry = $this->resource_index->get_by_uri( $rel_uri );
+			if ( $rel_entry && (int) $rel_entry['user_id'] === $user_id ) {
+				$related_content[] = array(
+					'uri'     => $rel_uri,
+					'name'    => (string) get_the_title( (int) $rel_entry['post_id'] ),
+					'excerpt' => (string) ( $rel_entry['excerpt'] ?? '' ),
+				);
+			}
+		}
 
 		$this->audit_log->record(
 			'resources_read',
@@ -417,6 +476,18 @@ class MCPEndpoint {
 			header( 'Cache-Control: private, max-age=300' );
 		}
 
+		$annotations = array(
+			'confidence' => (string) ( get_post_meta( $post_id, '_pressocampus_confidence', true ) ?: 'medium' ),
+			'priority'   => CPT::priority_to_float(
+				(string) ( get_post_meta( $post_id, '_pressocampus_annotation_priority', true ) ?: 'normal' )
+			),
+			'related'    => $related_uris,
+			'etag'       => $etag,
+		);
+		if ( ! empty( $related_content ) ) {
+			$annotations['related_content'] = $related_content;
+		}
+
 		return array(
 			'contents'    => array(
 				array(
@@ -425,14 +496,7 @@ class MCPEndpoint {
 					'mimeType' => $mime,
 				),
 			),
-			'annotations' => array(
-				'confidence' => (string) ( get_post_meta( $post_id, '_pressocampus_confidence', true ) ?: 'medium' ),
-				'priority'   => CPT::priority_to_float(
-					(string) ( get_post_meta( $post_id, '_pressocampus_annotation_priority', true ) ?: 'normal' )
-				),
-				'related'    => $related_uris,
-				'etag'       => $etag,
-			),
+			'annotations' => $annotations,
 		);
 	}
 
@@ -599,6 +663,61 @@ class MCPEndpoint {
 						'required'   => array( 'query' ),
 					),
 				),
+				array(
+					'name'        => 'list_memories',
+					'description' => 'Browse stored memories without needing a search query. Use for periodic audits, session warm-up, or surfacing everything in a group. Complements search_memory (which requires a keyword).',
+					'inputSchema' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'group'   => array(
+								'type'        => 'string',
+								'description' => 'Filter to a specific group. Omit to list all memories.',
+							),
+							'sort'    => array(
+								'type'    => 'string',
+								'enum'    => array( 'date_desc', 'date_asc', 'name_asc' ),
+								'default' => 'date_desc',
+							),
+							'limit'   => array(
+								'type'    => 'integer',
+								'default' => 20,
+								'maximum' => 50,
+							),
+							'cursor'  => array(
+								'type'        => 'string',
+								'description' => 'Pagination cursor from a previous list_memories response.',
+							),
+							'context' => array( 'type' => 'string' ),
+						),
+						'required'   => array(),
+					),
+				),
+				array(
+					'name'        => 'tag_memory',
+					'description' => 'Move a memory to a different group and/or change its priority. Use to reorganise memories as they accumulate, merge orphaned memories into groups, or promote important ones.',
+					'inputSchema' => array(
+						'type'       => 'object',
+						'properties' => array(
+							'uri'      => array(
+								'type'        => 'string',
+								'description' => 'URI of the memory to update (from resources/list or search_memory)',
+							),
+							'group'    => array(
+								'type'        => 'string',
+								'description' => 'New group/category. Creates the group if it does not exist.',
+							),
+							'priority' => array(
+								'type' => 'string',
+								'enum' => array( 'critical', 'important', 'normal', 'low' ),
+							),
+							'context'  => array(
+								'type'        => 'string',
+								'description' => 'Strongly recommended: why you are reorganising this.',
+							),
+						),
+						'required'   => array( 'uri' ),
+					),
+				),
 			),
 		);
 	}
@@ -618,6 +737,8 @@ class MCPEndpoint {
 			'update_soul'         => $this->tool_update_soul( $args ),
 			'update_soul_section' => $this->tool_update_soul_section( $args ),
 			'search_memory'       => $this->tool_search_memory( $args ),
+			'list_memories'       => $this->tool_list_memories( $args ),
+			'tag_memory'          => $this->tool_tag_memory( $args ),
 			default               => array(
 				'isError' => true,
 				'content' => array(
@@ -981,6 +1102,159 @@ class MCPEndpoint {
 		);
 	}
 
+	private function tool_list_memories( array $args ): array {
+		if ( ! $this->auth->check_rate_limit( 'read' ) ) {
+			$reads_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_reads'] ?? 60 );
+			return $this->tool_error( 'rate_limit_exceeded', "Read rate limit reached ({$reads_per_min}/min)." );
+		}
+
+		$user_id = Auth::get_current_user_id();
+		$host    = Auth::get_site_host();
+		$group   = sanitize_text_field( $args['group'] ?? '' );
+		$sort    = in_array( $args['sort'] ?? 'date_desc', array( 'date_desc', 'date_asc', 'name_asc' ), true )
+			? $args['sort']
+			: 'date_desc';
+		$limit   = min( 50, max( 1, (int) ( $args['limit'] ?? 20 ) ) );
+		$cursor  = isset( $args['cursor'] ) && $args['cursor'] !== '' ? (string) $args['cursor'] : null;
+		$page    = $cursor ? max( 1, (int) base64_decode( $cursor, true ) ) : 1; // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode
+		$context = substr( $args['context'] ?? '', 0, 200 ) ?: '[no context provided]';
+		$offset  = ( $page - 1 ) * $limit;
+
+		$soul_uri  = Soul::get_uri( $host );
+		$index_uri = Soul::get_index_uri( $host );
+
+		$orderby = 'modified';
+		$order   = 'DESC';
+		if ( $sort === 'date_asc' ) {
+			$order = 'ASC';
+		} elseif ( $sort === 'name_asc' ) {
+			$orderby = 'title';
+			$order   = 'ASC';
+		}
+
+		$query_args = array(
+			'post_type'      => PRESSOCAMPUS_CPT,
+			'post_status'    => 'publish',
+			'author'         => $user_id,
+			'posts_per_page' => $limit + 1, // Fetch one extra to check for next page.
+			'offset'         => $offset,
+			'orderby'        => $orderby,
+			'order'          => $order,
+			'no_found_rows'  => true,
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+			'meta_query'     => array(
+				array(
+					'key'     => '_pressocampus_uri',
+					'value'   => array( $soul_uri, $index_uri ),
+					'compare' => 'NOT IN',
+				),
+			),
+		);
+
+		if ( $group !== '' ) {
+			$query_args['tax_query'] = array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
+				array(
+					'taxonomy' => PRESSOCAMPUS_TAXONOMY,
+					'field'    => 'name',
+					'terms'    => $group,
+				),
+			);
+		}
+
+		$query = new \WP_Query( $query_args );
+		$items = array();
+		$count = 0;
+
+		foreach ( $query->posts as $post ) {
+			if ( $count >= $limit ) {
+				break;
+			}
+			$uri         = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
+			$post_groups = wp_get_object_terms( $post->ID, PRESSOCAMPUS_TAXONOMY, array( 'fields' => 'names' ) );
+			$group_label = ( ! is_wp_error( $post_groups ) && ! empty( $post_groups ) ) ? $post_groups[0] : '';
+			$items[]     = array(
+				'uri'        => $uri,
+				'name'       => $post->post_title,
+				'group'      => $group_label,
+				'created_at' => $post->post_date_gmt,
+				'updated_at' => $post->post_modified_gmt,
+				'priority'   => (string) ( get_post_meta( $post->ID, '_pressocampus_annotation_priority', true ) ?: 'normal' ),
+				'confidence' => (string) ( get_post_meta( $post->ID, '_pressocampus_confidence', true ) ?: 'medium' ),
+				'excerpt'    => wp_trim_words( $post->post_content, 20, '…' ),
+			);
+			++$count;
+		}
+
+		$result = array(
+			'items' => $items,
+			'count' => count( $items ),
+			'page'  => $page,
+		);
+
+		if ( count( $query->posts ) > $limit ) {
+			$result['next_cursor'] = base64_encode( (string) ( $page + 1 ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+		}
+
+		$this->audit_log->record( 'list_memories', $user_id, Auth::get_current_client_name(), '', $group ?: 'all', $context );
+
+		return $this->tool_success( $result );
+	}
+
+	private function tool_tag_memory( array $args ): array {
+		if ( ! $this->auth->check_rate_limit( 'write' ) ) {
+			$writes_per_min = (int) ( get_option( 'pressocampus_settings', array() )['rate_limit_writes'] ?? 30 );
+			return $this->tool_error( 'rate_limit_exceeded', "Write rate limit reached ({$writes_per_min}/min)." );
+		}
+
+		$user_id  = Auth::get_current_user_id();
+		$uri      = sanitize_text_field( $args['uri'] ?? '' );
+		$group    = isset( $args['group'] ) ? sanitize_text_field( $args['group'] ) : null;
+		$priority = isset( $args['priority'] ) && in_array( $args['priority'], array( 'critical', 'important', 'normal', 'low' ), true )
+			? $args['priority']
+			: null;
+		$context  = substr( $args['context'] ?? '', 0, 200 ) ?: '[no context provided]';
+
+		if ( ! $uri ) {
+			return $this->tool_error( 'missing_uri', 'uri is required.' );
+		}
+		if ( $group === null && $priority === null ) {
+			return $this->tool_error( 'nothing_to_update', 'Provide at least one of: group, priority.' );
+		}
+
+		$index_entry = $this->resource_index->get_by_uri( $uri );
+		if ( ! $index_entry || (int) $index_entry['user_id'] !== $user_id ) {
+			return $this->tool_error( 'not_found', 'Memory not found.', 404 );
+		}
+
+		$post_id = (int) $index_entry['post_id'];
+
+		// Guard against accidentally tagging protected resources.
+		$host = Auth::get_site_host();
+		if ( Soul::is_protected( $uri, $host ) ) {
+			return $this->tool_error( 'protected_resource', 'Cannot retag the soul or index.' );
+		}
+
+		if ( $group !== null ) {
+			wp_set_object_terms( $post_id, $group, PRESSOCAMPUS_TAXONOMY );
+		}
+		if ( $priority !== null ) {
+			update_post_meta( $post_id, '_pressocampus_annotation_priority', $priority );
+		}
+
+		$this->resource_index->mark_dirty( $user_id );
+		$this->audit_log->record( 'tag_memory', $user_id, Auth::get_current_client_name(), $uri, (string) get_the_title( $post_id ), $context );
+
+		$result = array( 'uri' => $uri );
+		if ( $group !== null ) {
+			$result['group'] = $group;
+		}
+		if ( $priority !== null ) {
+			$result['priority'] = $priority;
+		}
+
+		return $this->tool_success( $result );
+	}
+
 	private function tool_success( array $data ): array {
 		return array(
 			'content' => array(
@@ -992,8 +1266,8 @@ class MCPEndpoint {
 		);
 	}
 
-	private function tool_error( string $code, string $message, int $status = 400 ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- future-proofing; kept for signature consistency with rpc_error
-		return array(
+	private function tool_error( string $code, string $message, int $status = 400 ): array {
+		$result = array(
 			'isError' => true,
 			'content' => array(
 				array(
@@ -1007,9 +1281,15 @@ class MCPEndpoint {
 				),
 			),
 		);
+
+		if ( $status !== 400 ) {
+			$result['__http_status'] = $status;
+		}
+
+		return $result;
 	}
 
-	private function rpc_error( int $code, string $message, int $http_status = 400 ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- future-proofing; kept for signature consistency with tool_error
+	private function rpc_error( int $code, string $message, int $http_status = 400 ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- $http_status reserved for future transport-level RPC errors
 		return array(
 			'__rpc_error' => true,
 			'error'       => array(

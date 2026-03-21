@@ -63,6 +63,10 @@ SOUL;
 		return 'pressocampus://' . $host . '/index';
 	}
 
+	public static function get_briefing_uri( string $host ): string {
+		return 'pressocampus://' . $host . '/briefing';
+	}
+
 	public static function is_protected( string $uri, string $host ): bool {
 		return $uri === self::get_uri( $host ) || $uri === self::get_index_uri( $host );
 	}
@@ -142,6 +146,171 @@ SOUL;
 			'truncated' => true,
 			'status'    => $status,
 		);
+	}
+
+	/**
+	 * Generate a dynamic session briefing document for the AI.
+	 * Surfaces critical memories, recent activity, and stale candidates.
+	 *
+	 * @param int    $user_id    Current user.
+	 * @param string $host       Site host (for soul URI lookup).
+	 * @return string Markdown briefing text.
+	 */
+	public function generate_briefing( int $user_id, string $host ): string {
+		$memory_count = $this->resource_index->get_memory_count( $user_id );
+		$groups       = $this->resource_index->get_user_groups( $user_id );
+		$group_count  = count( $groups );
+		$now          = time();
+		$soul_post    = $this->get_post( $user_id );
+
+		$soul_status  = 'none';
+		$soul_updated = '';
+		if ( $soul_post ) {
+			$soul_status  = str_contains( CPT::get_raw_content( $soul_post->ID ), 'Status: empty' ) ? 'empty' : 'complete';
+			$soul_updated = (string) human_time_diff( strtotime( $soul_post->post_modified_gmt ), $now ) . ' ago';
+		}
+
+		$soul_uri  = self::get_uri( $host );
+		$index_uri = self::get_index_uri( $host );
+
+		// ── Critical memories ─────────────────────────────────────────
+		$critical_query = new \WP_Query(
+			array(
+				'post_type'      => PRESSOCAMPUS_CPT,
+				'post_status'    => 'publish',
+				'author'         => $user_id,
+				'posts_per_page' => 10,
+				'no_found_rows'  => true,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'meta_query'     => array(
+					'relation' => 'AND',
+					array(
+						'key'     => '_pressocampus_annotation_priority',
+						'value'   => 'critical',
+						'compare' => '=',
+					),
+					array(
+						'key'     => '_pressocampus_uri',
+						'value'   => array( $soul_uri, $index_uri ),
+						'compare' => 'NOT IN',
+					),
+				),
+			)
+		);
+
+		// ── Recent memories (last 7 days) ─────────────────────────────
+		$recent_query = new \WP_Query(
+			array(
+				'post_type'      => PRESSOCAMPUS_CPT,
+				'post_status'    => 'publish',
+				'author'         => $user_id,
+				'posts_per_page' => 10,
+				'orderby'        => 'modified',
+				'order'          => 'DESC',
+				'date_query'     => array(
+					array(
+						'after'   => '7 days ago',
+						'column'  => 'post_modified_gmt',
+						'compare' => '>',
+					),
+				),
+				'no_found_rows'  => true,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'meta_query'     => array(
+					array(
+						'key'     => '_pressocampus_uri',
+						'value'   => array( $soul_uri, $index_uri ),
+						'compare' => 'NOT IN',
+					),
+				),
+			)
+		);
+
+		// ── Stale candidates (>6 months, not updated) ─────────────────
+		$stale_query = new \WP_Query(
+			array(
+				'post_type'      => PRESSOCAMPUS_CPT,
+				'post_status'    => 'publish',
+				'author'         => $user_id,
+				'posts_per_page' => 8,
+				'orderby'        => 'modified',
+				'order'          => 'ASC',
+				'date_query'     => array(
+					array(
+						'before' => '6 months ago',
+						'column' => 'post_modified_gmt',
+					),
+				),
+				'no_found_rows'  => true,
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+				'meta_query'     => array(
+					array(
+						'key'     => '_pressocampus_uri',
+						'value'   => array( $soul_uri, $index_uri ),
+						'compare' => 'NOT IN',
+					),
+				),
+			)
+		);
+
+		// ── Assemble Markdown ──────────────────────────────────────────
+		$lines   = array();
+		$lines[] = '# Session Briefing';
+		$lines[] = '';
+		$lines[] = 'Generated: ' . gmdate( 'Y-m-d H:i', $now ) . ' UTC';
+		$lines[] = '';
+		$lines[] = '## Overview';
+		$lines[] = '';
+		$lines[] = '- **Memories:** ' . $memory_count . ' across ' . $group_count . ' group' . ( $group_count !== 1 ? 's' : '' )
+			. ( $groups ? ' (' . implode( ', ', $groups ) . ')' : '' );
+		$lines[] = '- **Soul:** ' . $soul_status . ( $soul_updated ? ' · last updated ' . $soul_updated : '' );
+		$lines[] = '';
+
+		// Critical.
+		if ( $critical_query->have_posts() ) {
+			$lines[] = '## Critical Memories';
+			$lines[] = '';
+			foreach ( $critical_query->posts as $post ) {
+				$uri     = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
+				$excerpt = wp_trim_words( $post->post_content, 20, '…' );
+				$lines[] = '- **' . $post->post_title . '** `' . $uri . '`';
+				$lines[] = '  ' . $excerpt;
+			}
+			$lines[] = '';
+		}
+
+		// Recent.
+		if ( $recent_query->have_posts() ) {
+			$lines[] = '## Recent (last 7 days)';
+			$lines[] = '';
+			foreach ( $recent_query->posts as $post ) {
+				$uri     = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
+				$excerpt = wp_trim_words( $post->post_content, 15, '…' );
+				$age     = human_time_diff( strtotime( $post->post_modified_gmt ), $now );
+				$lines[] = '- **' . $post->post_title . '** (' . $age . ' ago) `' . $uri . '`';
+				$lines[] = '  ' . $excerpt;
+			}
+			$lines[] = '';
+		}
+
+		// Stale candidates.
+		if ( $stale_query->have_posts() ) {
+			$lines[] = '## May Need Review (not updated in 6+ months)';
+			$lines[] = '';
+			foreach ( $stale_query->posts as $post ) {
+				$uri     = (string) get_post_meta( $post->ID, '_pressocampus_uri', true );
+				$age     = human_time_diff( strtotime( $post->post_modified_gmt ), $now );
+				$lines[] = '- **' . $post->post_title . '** (last updated ' . $age . ' ago) `' . $uri . '`';
+			}
+			$lines[] = '';
+		}
+
+		if ( ! $critical_query->have_posts() && ! $recent_query->have_posts() ) {
+			$lines[] = '_No critical memories and no recent activity._';
+			$lines[] = '';
+		}
+
+		return implode( "\n", $lines );
 	}
 
 	/**
