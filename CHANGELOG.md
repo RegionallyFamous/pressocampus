@@ -29,6 +29,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.23] — 2026-03-21
+
+### Changed
+
+- **Admin menu item moved to the bottom of the sidebar.** Menu position changed from `30` (mid-sidebar, between Pages and Comments) to `100` (below the bottom separator, after Settings).
+
+---
+
 ## [1.0.22] — 2026-03-21
 
 ### Changed

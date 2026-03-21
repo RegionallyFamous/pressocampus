@@ -142,7 +142,7 @@ class Settings {
 			'pressocampus',
 			array( $this, 'render_settings_page' ),
 			'data:image/svg+xml;base64,' . $svg_icon,
-			30
+			100
 		);
 
 		// Replace the auto-generated duplicate submenu entry.
