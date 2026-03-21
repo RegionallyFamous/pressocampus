@@ -191,6 +191,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.4] — 2026-03-19
+
+### Changed
+
+- Rewrote all admin UI copy to lead with ownership and permanence. Hero banner on the Connect tab now opens with "WordPress has been running since 2003. Your memories should last just as long." Consent screen, soul status, empty states, export section, and History page header all updated with stronger, more direct language. Connect dropdown relabeled "Get config for…" with client icons.
+
+---
+
 ## [1.0.3] — 2026-03-19
 
 ### Fixed

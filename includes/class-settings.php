@@ -213,8 +213,8 @@ CSS;
 		<?php if ( $show_welcome ) : ?>
 		<div class="notice notice-success">
 			<p>
-				<strong><?php esc_html_e( 'Your memories are online.', 'pressocampus' ); ?></strong>
-				<?php esc_html_e( 'Pressocampus is active. Copy your Brain URL below and paste it into your AI client to connect.', 'pressocampus' ); ?>
+				<strong><?php esc_html_e( 'Your brain is live. Your memories are yours — forever.', 'pressocampus' ); ?></strong>
+				<?php esc_html_e( 'WordPress has been running since 2003 and isn\'t going anywhere. Neither are your memories. Copy your Brain URL below and connect your first AI.', 'pressocampus' ); ?>
 			</p>
 		</div>
 		<?php endif; ?>
@@ -243,7 +243,17 @@ CSS;
 			<!-- ===== CONNECT TAB ===== -->
 			<div id="pc-tab-connect" class="pc-tab-panel <?php echo $active_tab === 'connect' ? 'active' : ''; ?>">
 
-				<h2><?php esc_html_e( 'Brain Endpoint', 'pressocampus' ); ?></h2>
+				<div style="background:#f0f6ff;border-left:4px solid #2271b1;padding:16px 20px;margin:20px 0 24px;border-radius:0 4px 4px 0">
+					<p style="margin:0 0 6px;font-size:15px;font-weight:600;color:#1d2327">
+						<?php esc_html_e( 'WordPress has been running since 2003. Your memories should last just as long.', 'pressocampus' ); ?>
+					</p>
+					<p style="margin:0;color:#50575e;font-size:13px">
+						<?php esc_html_e( 'Every AI platform will change, pivot, or disappear. Your context lives here — on your server, in your database, under your control. Connect any AI. Switch whenever you want. Your memories stay put.', 'pressocampus' ); ?>
+					</p>
+				</div>
+
+				<h2><?php esc_html_e( 'Your Brain URL', 'pressocampus' ); ?></h2>
+				<p><?php esc_html_e( 'This is the one URL that gives any AI access to your permanent memory store. Paste it wherever your AI client asks for an MCP server URL.', 'pressocampus' ); ?></p>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row">
@@ -251,52 +261,57 @@ CSS;
 						</th>
 						<td>
 							<input id="pc-mcp-url" type="text" readonly class="regular-text code" value="<?php echo esc_attr( $mcp_url ); ?>" />
-							<button class="button" onclick="pcCopy('<?php echo esc_js( $mcp_url ); ?>', this)"><?php esc_html_e( 'Copy', 'pressocampus' ); ?></button>
+							<button class="button button-primary" onclick="pcCopy('<?php echo esc_js( $mcp_url ); ?>', this)"><?php esc_html_e( 'Copy URL', 'pressocampus' ); ?></button>
 						</td>
 					</tr>
 					<tr>
-						<th scope="row"><?php esc_html_e( 'Share Brain', 'pressocampus' ); ?></th>
+						<th scope="row"><?php esc_html_e( 'Connect an AI', 'pressocampus' ); ?></th>
 						<td>
 							<div class="pc-dropdown-wrap">
-								<button class="button" id="pc-share-btn" onclick="pcToggleDropdown(event)"><?php esc_html_e( 'Share Brain ▾', 'pressocampus' ); ?></button>
+								<button class="button" id="pc-share-btn" onclick="pcToggleDropdown(event)"><?php esc_html_e( 'Get config for… ▾', 'pressocampus' ); ?></button>
 								<div class="pc-dropdown-menu" id="pc-share-menu">
-									<button class="pc-dropdown-item" onclick="pcCopy('<?php echo esc_js( $mcp_url ); ?>', null); pcCloseDropdown();"><?php esc_html_e( 'Copy URL', 'pressocampus' ); ?></button>
-									<button class="pc-dropdown-item" onclick="pcCopyClaudeConfig(); pcCloseDropdown();"><?php esc_html_e( 'Copy Claude Desktop config', 'pressocampus' ); ?></button>
-									<button class="pc-dropdown-item" onclick="pcCopyCursorConfig(); pcCloseDropdown();"><?php esc_html_e( 'Copy Cursor config', 'pressocampus' ); ?></button>
-									<button class="pc-dropdown-item" onclick="pcCopyGenericConfig(); pcCloseDropdown();"><?php esc_html_e( 'Copy generic MCP config', 'pressocampus' ); ?></button>
+									<button class="pc-dropdown-item" onclick="pcCopy('<?php echo esc_js( $mcp_url ); ?>', null); pcCloseDropdown();"><?php esc_html_e( '📋 Copy URL only', 'pressocampus' ); ?></button>
+									<button class="pc-dropdown-item" onclick="pcCopyClaudeConfig(); pcCloseDropdown();"><?php esc_html_e( '🤖 Claude Desktop', 'pressocampus' ); ?></button>
+									<button class="pc-dropdown-item" onclick="pcCopyCursorConfig(); pcCloseDropdown();"><?php esc_html_e( '⌨️ Cursor', 'pressocampus' ); ?></button>
+									<button class="pc-dropdown-item" onclick="pcCopyGenericConfig(); pcCloseDropdown();"><?php esc_html_e( '⚙️ Other MCP client', 'pressocampus' ); ?></button>
 								</div>
 							</div>
+							<p class="description" style="margin-top:6px"><?php esc_html_e( 'Pick your AI client for a ready-to-paste config snippet.', 'pressocampus' ); ?></p>
 						</td>
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'Soul', 'pressocampus' ); ?></h2>
-				<p><?php esc_html_e( 'Your Soul is a persistent note about you that your AI reads at the start of every session — like a cover letter for your memories.', 'pressocampus' ); ?></p>
+				<h2><?php esc_html_e( 'Your Soul', 'pressocampus' ); ?></h2>
+				<p><?php esc_html_e( 'Your Soul is the most important document in your brain. Every AI reads it first, every single session — before it says a word. It\'s who you are, how you think, and how you want to be worked with. Written once. Travels everywhere.', 'pressocampus' ); ?></p>
 				<table class="form-table" role="presentation">
 					<tr>
 						<th scope="row"><?php esc_html_e( 'Status', 'pressocampus' ); ?></th>
 						<td>
 							<?php if ( $soul_status === 'empty' ) : ?>
-								<?php esc_html_e( 'Your soul is empty — connect your AI to set it up.', 'pressocampus' ); ?>
+								<strong style="color:#d63638"><?php esc_html_e( '⚡ Your Soul is waiting.', 'pressocampus' ); ?></strong>
+								<span style="margin-left:6px;color:#50575e"><?php esc_html_e( 'Connect your AI and it will interview you to write it.', 'pressocampus' ); ?></span>
 							<?php else : ?>
+								<strong style="color:#00a32a">✓ <?php esc_html_e( 'Soul is live', 'pressocampus' ); ?></strong>
+								<span style="margin-left:8px;color:#50575e">
 								<?php
 								printf(
 									/* translators: 1: word count, 2: human time diff, 3: revision count */
-									esc_html__( '%1$s words · last updated %2$s · %3$s revisions', 'pressocampus' ),
+									esc_html__( '%1$s words · updated %2$s · %3$s revisions', 'pressocampus' ),
 									'<strong>' . esc_html( number_format_i18n( $soul_word_count ) ) . '</strong>',
 									'<strong>' . esc_html( $soul_updated ) . '</strong>',
 									'<strong>' . esc_html( number_format_i18n( $soul_revisions ) ) . '</strong>'
 								);
 								?>
+								</span>
 							<?php endif; ?>
 						</td>
 					</tr>
 				</table>
 
 				<h2><?php esc_html_e( 'Connection Test', 'pressocampus' ); ?></h2>
-				<p><?php esc_html_e( 'Verify your AI client can reach this site\'s MCP endpoint.', 'pressocampus' ); ?></p>
+				<p><?php esc_html_e( 'Confirm your brain is reachable before connecting an AI client.', 'pressocampus' ); ?></p>
 				<p>
-					<button class="button button-primary" id="pc-test-btn" onclick="pcTestConnection()"><?php esc_html_e( 'Test Connection', 'pressocampus' ); ?></button>
+					<button class="button button-secondary" id="pc-test-btn" onclick="pcTestConnection()"><?php esc_html_e( 'Test Connection', 'pressocampus' ); ?></button>
 					<span id="pc-test-result" style="margin-left:8px;vertical-align:middle"></span>
 				</p>
 
@@ -307,7 +322,7 @@ CSS;
 
 				<h2><?php esc_html_e( 'Connected Apps', 'pressocampus' ); ?></h2>
 				<?php if ( empty( $clients ) ) : ?>
-					<p><?php esc_html_e( 'No AI clients connected yet.', 'pressocampus' ); ?></p>
+					<p><?php esc_html_e( 'No AI clients connected yet. Every client you authorize gets full access to your memories — and you can revoke any of them instantly from this page.', 'pressocampus' ); ?></p>
 				<?php else : ?>
 				<table class="wp-list-table widefat fixed striped">
 					<thead>
@@ -441,17 +456,18 @@ CSS;
 				</div>
 				<?php endif; ?>
 
-				<h2><?php esc_html_e( 'Data', 'pressocampus' ); ?></h2>
+				<h2><?php esc_html_e( 'Your Data', 'pressocampus' ); ?></h2>
+				<p><?php esc_html_e( 'Your memories live in your WordPress database. They\'re yours. You can take them with you at any time.', 'pressocampus' ); ?></p>
 				<p>
 					<a href="<?php echo esc_url( admin_url( 'admin-ajax.php?action=pressocampus_export_brain&_wpnonce=' . wp_create_nonce( 'pressocampus_export_brain' ) ) ); ?>"
-						class="button" download
-						title="<?php esc_attr_e( 'Export all memories as JSON or ZIP', 'pressocampus' ); ?>">
-						<?php esc_html_e( 'Download Brain', 'pressocampus' ); ?>
+						class="button button-primary" download
+						title="<?php esc_attr_e( 'Export all memories as JSON', 'pressocampus' ); ?>">
+						<?php esc_html_e( '⬇ Download Brain', 'pressocampus' ); ?>
 					</a>
-					<span class="description" style="margin-left:8px"><?php esc_html_e( 'Exports all memories as JSON.', 'pressocampus' ); ?></span>
+					<span class="description" style="margin-left:8px"><?php esc_html_e( 'Full JSON export — every memory, every soul, every group. Re-importable on any Pressocampus installation.', 'pressocampus' ); ?></span>
 				</p>
 				<p class="description">
-					<?php esc_html_e( 'To fully uninstall Pressocampus, deactivate and delete this plugin from the Plugins page.', 'pressocampus' ); ?>
+					<?php esc_html_e( 'To uninstall: deactivate and delete the plugin from the Plugins page. Your database tables and memories remain intact unless you remove them manually.', 'pressocampus' ); ?>
 				</p>
 
 			</div><!-- /advanced tab -->
@@ -575,7 +591,8 @@ CSS;
 
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Pressocampus — History', 'pressocampus' ); ?></h1>
+			<h1><?php esc_html_e( 'Memory History', 'pressocampus' ); ?></h1>
+			<p style="color:#50575e;margin-top:-6px"><?php esc_html_e( 'Every memory your AI has ever touched — remembered, updated, deleted, searched. Nothing is hidden from you.', 'pressocampus' ); ?></p>
 
 			<form method="get" action="<?php echo esc_url( $base_url ); ?>">
 				<input type="hidden" name="page" value="pressocampus-history" />
