@@ -7,6 +7,28 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.22] — 2026-03-21
+
+### Added
+
+- **First-install Quick Start card** — on activation, the admin is redirected to a three-step onboarding panel above the settings tabs. Step 1 shows the Brain URL with a copy button. Step 2 provides tabbed config snippets for Claude Desktop, Cursor / Windsurf, and generic MCP clients, each with a one-click copy button. Step 3 has an inline Test Connection button so the endpoint can be verified before switching to an AI client. The card dismisses cleanly via a `×` link and never reappears.
+
+### Fixed
+
+- **HTTP status propagation** — `tool_error()` now threads its `$status` argument through `dispatch_single()` to `handle()`, so a 409 ETag conflict returns HTTP 409 at the transport level rather than 200.
+- **Duplicate detection bug** — the `possible_duplicate` field was always set to the first search result regardless of similarity. Renamed to `possible_related` and gated on ≥ 40% textual similarity. `possible_contradiction` threshold raised from 50% to 70% to prevent false positives on loosely related sentences.
+- **Soul update email is now synchronous** — replaced `wp_schedule_single_event` with a direct `send_update_notice()` call so the email fires immediately rather than waiting for the next WP-Cron trigger (which could be hours on low-traffic sites).
+- **Constant / header version mismatch** — `PRESSOCAMPUS_VERSION` was stuck at `1.0.20` while the plugin header read `1.0.21`; both are now `1.0.22`.
+
+### Changed
+
+- **`expires_at` support in `remember` tool** — the tool now accepts an ISO 8601 datetime (`expires_at`) and stores it as `_pressocampus_expires_at`. The existing expiry cron job now has values to act on.
+- **`get_user_groups()` cached** — result is now stored in the object cache for 5 minutes and invalidated on every write via `mark_dirty()`, eliminating a full index-table scan on every MCP `initialize`.
+- **Auth fallback path logged** — `validate_with_direct_resource_server()` now writes an `error_log()` warning when hit, making bootstrap injection failures visible in production logs.
+- **Access token TTL raised** — `PRESSOCAMPUS_ACCESS_TOKEN_TTL` changed from `PT1H` (1 hour) to `PT8H` (8 hours). Users who return to Claude after a gap will no longer be forced to re-authorize mid-session.
+
+---
+
 ## [1.0.21] — 2026-03-21
 
 ### Changed
