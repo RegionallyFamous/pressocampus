@@ -7,6 +7,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.0.16] — 2026-03-21
+
+### Changed
+
+- **Forceful soul-setup directive on first connection** — when `meta.soulStatus` is `"empty"`, the MCP `initialize` response now returns a different `instructions` value that leads with a numbered, imperative ACTION REQUIRED block. The AI is told explicitly to (1) call `update_soul` with the template, (2) greet the user, (3) run the interview, and (4) write the completed Soul — before doing anything else. Previously this guidance was buried mid-paragraph in the general instructions and could be deprioritised.
+
+---
+
 ## [1.0.15] — 2026-03-21
 
 ### Fixed

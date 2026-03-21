@@ -176,13 +176,30 @@ class MCPEndpoint {
 		$groups       = $this->resource_index->get_user_groups( $user_id );
 		$memory_count = $this->resource_index->get_memory_count( $user_id );
 
+		$soul_status = $snapshot_data['status'];
+
+		$base_instructions = "You are connected to Pressocampus — this person's personal memory store and identity layer, hosted on their own site. Memories here are permanent and portable: they survive every AI platform change.\n\nOn every connection: read meta.soul_snapshot first. It defines who this person is, how they think, and how they like to communicate. Let it shape every response.\n\nTools available:\n- remember: Store any preference, fact, decision, or event. Call proactively — do not wait to be asked. Always call search_memory first to avoid duplicates or contradictions.\n- search_memory: Call before remembering anything new, and whenever the user asks about something that might already be stored.\n- forget: Delete a memory permanently. Only call when the user explicitly asks.\n- update_memory: Correct or expand an existing memory retrieved via resources/read.\n- update_soul_section: Update one ## section of the soul. Prefer this for any targeted identity or preference change.\n- update_soul: Replace the full soul. Only for complete restructuring.\n\nRules: always search before storing; remember proactively; never forget unless asked; treat this archive as permanent, not a session scratchpad.";
+
+		if ( $soul_status === 'empty' ) {
+			$instructions = "ACTION REQUIRED — complete these steps before responding to the user:\n\n"
+				. "1. Call update_soul now with the Soul template from meta.soul_snapshot to initialise the file.\n"
+				. "2. Greet the user: tell them you have access to their personal memory store and what that means — memories that are permanent, portable, and travel with them across every AI platform.\n"
+				. "3. Begin the Soul interview. Ask: their name, what they do, their goals, and how they like to work with AI. One or two questions at a time — conversational, not a form.\n"
+				. "4. Once you have enough to fill the key sections, call update_soul with their real answers in place of the template placeholders.\n\n"
+				. "Do not wait for the user to prompt you. Do not skip the interview. This is the one setup step that makes every future conversation better.\n\n"
+				. "---\n\n"
+				. $base_instructions;
+		} else {
+			$instructions = $base_instructions;
+		}
+
 		return array(
 			'protocolVersion' => self::MCP_VERSION,
 			'serverInfo'      => array(
 				'name'    => 'Pressocampus',
 				'version' => PRESSOCAMPUS_VERSION,
 			),
-			'instructions'    => "You are connected to Pressocampus — this person's personal memory store and identity layer, hosted on their own site. Memories here are permanent and portable: they survive every AI platform change.\n\nOn every connection: read meta.soul_snapshot first. It defines who this person is, how they think, and how they like to communicate. Let it shape every response.\n\nOn first connection (meta.soulStatus is \"empty\" or meta.soul_snapshot is blank): greet the user warmly, explain that you now have access to their persistent memory store, and tell them what you can do — you can remember things permanently, recall past conversations, track their preferences, and build a picture of who they are over time that travels with them across every AI platform. Then gently interview them to build their soul. Ask about their name, what they do, their goals, how they like to work with AI. Once you have enough, write it with update_soul.\n\nTools available:\n- remember: Store any preference, fact, decision, or event. Call proactively — do not wait to be asked. Always call search_memory first to avoid duplicates or contradictions.\n- search_memory: Call before remembering anything new, and whenever the user asks about something that might already be stored.\n- forget: Delete a memory permanently. Only call when the user explicitly asks.\n- update_memory: Correct or expand an existing memory retrieved via resources/read.\n- update_soul_section: Update one ## section of the soul. Prefer this for any targeted identity or preference change.\n- update_soul: Replace the full soul. Only for complete restructuring.\n\nRules: always search before storing; remember proactively; never forget unless asked; treat this archive as permanent, not a session scratchpad.",
+			'instructions'    => $instructions,
 			'capabilities'    => array(
 				'resources' => array(
 					'listChanged' => true,
