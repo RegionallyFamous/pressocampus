@@ -1276,21 +1276,19 @@ class MCPEndpoint {
 		$terms_by_post = array();
 		if ( ! empty( $page_post_ids ) ) {
 			global $wpdb;
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$placeholders = implode( ',', array_fill( 0, count( $page_post_ids ), '%d' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 			$term_rows = $wpdb->get_results(
+				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$wpdb->prepare(
-					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					sprintf(
-						"SELECT tr.object_id, t.name
-						   FROM {$wpdb->term_relationships} tr
-						   JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
-						   JOIN {$wpdb->terms} t           ON t.term_id          = tt.term_id
-						  WHERE tr.object_id IN (%s)
-						    AND tt.taxonomy  = %%s",
-						implode( ',', array_fill( 0, count( $page_post_ids ), '%d' ) )
-					),
-					...$page_post_ids,
-					PRESSOCAMPUS_TAXONOMY
+					"SELECT tr.object_id, t.name
+					   FROM {$wpdb->term_relationships} tr
+					   JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+					   JOIN {$wpdb->terms} t           ON t.term_id          = tt.term_id
+					  WHERE tr.object_id IN ({$placeholders})
+					    AND tt.taxonomy  = %s",
+					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+					array_merge( $page_post_ids, array( PRESSOCAMPUS_TAXONOMY ) )
 				)
 			);
 			if ( is_array( $term_rows ) ) {
