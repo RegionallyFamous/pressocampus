@@ -56,12 +56,87 @@ class Cache {
 			}
 		}
 
-		// Transient fallback.
+		// File-based counters avoid hammering wp_options on every MCP request when
+		// no persistent object cache is installed (transients are stored as options).
+		$file_inc = $this->increment_file( $key, $expire );
+		if ( $file_inc !== null ) {
+			return $file_inc;
+		}
+
+		// Last resort: transient fallback.
 		$transient_key = 'pc_rl_' . $key;
 		$current       = (int) get_transient( $transient_key );
 		$new           = $current + 1;
 		set_transient( $transient_key, $new, $expire );
 		return $new;
+	}
+
+	/**
+	 * Atomic-ish increment using a file in wp-content (avoids options table writes).
+	 *
+	 * @return int|null New value, or null if the file store is unavailable.
+	 */
+	private function increment_file( string $key, int $expire ): ?int {
+		if ( ! wp_is_writable( WP_CONTENT_DIR ) ) {
+			return null;
+		}
+
+		$dir = rtrim( WP_CONTENT_DIR, '/\\' ) . '/cache/pressocampus-rate';
+		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
+			return null;
+		}
+
+		$ht = $dir . '/.htaccess';
+		if ( ! file_exists( $ht ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			file_put_contents( $ht, "# Pressocampus rate limit cache — deny HTTP access\n<IfModule mod_authz_core.c>\nRequire all denied\n</IfModule>\n<IfModule !mod_authz_core.c>\nDeny from all\n</IfModule>\n" );
+		}
+
+		$path = $dir . '/' . md5( $key ) . '.json';
+		$fp   = fopen( $path, 'c+' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		if ( ! is_resource( $fp ) ) {
+			return null;
+		}
+
+		if ( ! flock( $fp, LOCK_EX ) ) {
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- raw handle close after failed lock
+			fclose( $fp );
+			return null;
+		}
+
+		$raw  = stream_get_contents( $fp );
+		$data = json_decode( is_string( $raw ) && $raw !== '' ? $raw : '{}', true );
+		if ( ! is_array( $data ) ) {
+			$data = array();
+		}
+
+		$bucket = (int) floor( time() / 60 );
+		$stored = isset( $data['bucket'] ) ? (int) $data['bucket'] : 0;
+		$count  = isset( $data['count'] ) ? (int) $data['count'] : 0;
+
+		if ( $stored !== $bucket ) {
+			$count = 0;
+		}
+
+		++$count;
+		$payload = wp_json_encode(
+			array(
+				'bucket' => $bucket,
+				'count'  => $count,
+				'exp'    => time() + $expire + 60,
+			)
+		);
+
+		ftruncate( $fp, 0 );
+		rewind( $fp );
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
+		fwrite( $fp, $payload !== false ? $payload : '{}' );
+		fflush( $fp );
+		flock( $fp, LOCK_UN );
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- raw handle close after successful write
+		fclose( $fp );
+
+		return $count;
 	}
 
 	/**

@@ -7,6 +7,30 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.0] — 2026-03-28
+
+### Added
+
+- **KeyStore (`includes/class-keystore.php`)** — RSA and Defuse keys resolve from wp-config constants, optional file paths, `PRESSOCAMPUS_KEY_DIR` or `wp-content/pressocampus-keys/`, then legacy options. New keys prefer on-disk storage when the directory is writable. Admin system check shows which layer supplied each key.
+- **Defuse encryption key on activation** — `Installer::maybe_generate_encryption_key()` runs beside RSA generation so OAuth encryption material exists before first token use.
+- **Virtual MCP resource `pressocampus://session-instructions`** — static operator and tool documentation; `initialize` returns a short pointer plus `meta.instructions_resource_uri` to reduce repeated large instruction blobs.
+- **File-based rate limiting** — when no external object cache is available, rate limit counters use `wp-content/cache/pressocampus-rate/` JSON files with flock, falling back to transients only if file storage fails.
+- **`docs/ROADMAP.md`** — maintenance notes (search/dedup, object cache, PHP floor).
+
+### Changed
+
+- **REST `permission_callback`** — MCP: `permission_mcp` allows OPTIONS/GET without auth; POST requires `Auth::get_current_user_id() > 0` after `rest_authentication_errors`. OAuth: `permission_oauth_public()` documents RFC 6749 public endpoints.
+- **Memory search** — single SQL path: FULLTEXT on index excerpt, title `LIKE`, optional first-token `LIKE` on content/excerpt for recall (replaces WP_Query `s` + merge). Group filter uses `EXISTS` on term relationships.
+- **Uninstall** — deletes `pressocampus_mem` posts in batches of 100 via `wp_delete_post`; removes default on-disk key files under `wp-content/pressocampus-keys/` when present.
+- **Minimum PHP 8.1** — `composer.json`, plugin header, installer check, readme, PHPCS `testVersion`, CI adds PHP 8.1 (latest WP only).
+- **`class-soul.php` term batch query** — same safe `IN` + `$wpdb->prepare` pattern as MCP list_memories (avoids PHPCS interpolated-placeholder issues).
+
+### Developer
+
+- **Filter `pressocampus_remember_dedup_search`** — return `false` to skip `resource_index->search()` during `remember` (e.g. to reduce latency).
+
+---
+
 ## [1.2.0] — 2026-03-21
 
 ### Added

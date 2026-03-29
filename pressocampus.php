@@ -3,10 +3,10 @@
  * Plugin Name:       Pressocampus
  * Plugin URI:        https://github.com/RegionallyFamous/pressocampus
  * Description:       Give your AI a permanent memory — stored on your WordPress site, not locked inside any app.
- * Version:           1.2.0
+ * Version:           1.3.0
  * Requires at least: 6.4
  * Tested up to:      6.9
- * Requires PHP:      8.3
+ * Requires PHP:      8.1
  * Author:            Regionally Famous
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
@@ -34,7 +34,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Constants
 // ---------------------------------------------------------------------------
 
-define( 'PRESSOCAMPUS_VERSION', '1.2.0' );
+define( 'PRESSOCAMPUS_VERSION', '1.3.0' );
 define( 'PRESSOCAMPUS_DB_VERSION', '1.2' );
 define( 'PRESSOCAMPUS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PRESSOCAMPUS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -42,6 +42,9 @@ define( 'PRESSOCAMPUS_PLUGIN_FILE', __FILE__ );
 define( 'PRESSOCAMPUS_CPT', 'pressocampus_mem' );
 define( 'PRESSOCAMPUS_TAXONOMY', 'pressocampus_group' );
 define( 'PRESSOCAMPUS_SCOPE', 'pressocampus:memory' );
+
+/** Virtual MCP resource URI — full operator / tool documentation (resources/read). */
+define( 'PRESSOCAMPUS_MCP_INSTRUCTIONS_URI', 'pressocampus://session-instructions' );
 
 // OAuth token TTLs — ISO 8601 duration strings.
 define( 'PRESSOCAMPUS_AUTH_CODE_TTL', 'PT10M' );    // 10 minutes
@@ -101,6 +104,7 @@ function pressocampus_autoload( string $class_name ): void {
 		'Pressocampus\\Soul'                            => 'includes/class-soul.php',
 		'Pressocampus\\Onboarding'                      => 'includes/class-onboarding.php',
 		'Pressocampus\\Settings'                        => 'includes/class-settings.php',
+		'Pressocampus\\KeyStore'                        => 'includes/class-keystore.php',
 		'Pressocampus\\OAuth\\WPClientRepository'       => 'includes/oauth/class-wp-client-repository.php',
 		'Pressocampus\\OAuth\\WPAccessTokenRepository'  => 'includes/oauth/class-wp-access-token-repository.php',
 		'Pressocampus\\OAuth\\WPAuthCodeRepository'     => 'includes/oauth/class-wp-auth-code-repository.php',

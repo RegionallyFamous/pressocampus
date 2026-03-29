@@ -478,18 +478,18 @@ CSS;
 				</div>
 			<?php else : ?>
 
-			<?php
-			// Character count bar.
-			$char_limit  = 6000;
-			$char_pct    = min( 100, (int) round( ( $soul_char_count / $char_limit ) * 100 ) );
-			if ( $soul_char_count >= $char_limit ) {
-				$bar_color = '#d63638'; // red — over limit
-			} elseif ( $soul_char_count >= 5000 ) {
-				$bar_color = '#dba617'; // yellow — approaching
-			} else {
-				$bar_color = '#00a32a'; // green — healthy
-			}
-			?>
+				<?php
+				// Character count bar.
+				$char_limit = 6000;
+				$char_pct   = min( 100, (int) round( ( $soul_char_count / $char_limit ) * 100 ) );
+				if ( $soul_char_count >= $char_limit ) {
+					$bar_color = '#d63638'; // red — over limit
+				} elseif ( $soul_char_count >= 5000 ) {
+					$bar_color = '#dba617'; // yellow — approaching
+				} else {
+					$bar_color = '#00a32a'; // green — healthy
+				}
+				?>
 
 			<div style="margin-bottom:20px">
 				<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -530,26 +530,26 @@ CSS;
 				<span>
 					<?php
 					$soul_host = wp_parse_url( home_url(), PHP_URL_HOST ) ?? 'localhost';
-				$soul_q    = new \WP_Query( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-					array(
-						'post_type'      => PRESSOCAMPUS_CPT,
-						'post_status'    => 'publish',
-						'author'         => $user_id,
-						'posts_per_page' => 1,
-						'no_found_rows'  => false,
-						'fields'         => 'ids',
-						'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
-							array(
-								'key'     => '_pressocampus_uri',
-								'value'   => array(
-									Soul::get_uri( $soul_host ),
-									Soul::get_index_uri( $soul_host ),
+					$soul_q    = new \WP_Query( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+						array(
+							'post_type'      => PRESSOCAMPUS_CPT,
+							'post_status'    => 'publish',
+							'author'         => $user_id,
+							'posts_per_page' => 1,
+							'no_found_rows'  => false,
+							'fields'         => 'ids',
+							'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+								array(
+									'key'     => '_pressocampus_uri',
+									'value'   => array(
+										Soul::get_uri( $soul_host ),
+										Soul::get_index_uri( $soul_host ),
+									),
+									'compare' => 'NOT IN',
 								),
-								'compare' => 'NOT IN',
 							),
-						),
-					)
-				);
+						)
+					);
 					printf(
 						/* translators: %s: memory count */
 						esc_html__( '%s memories stored', 'pressocampus' ),
@@ -1408,13 +1408,35 @@ CSS;
 
 		// 5. RSA key pair — auto-generate now if missing so subsequent checks work
 		Installer::maybe_generate_rsa_keys();
-		$has_priv = (string) get_option( 'pressocampus_rsa_private_key', '' ) !== '';
-		$has_pub  = (string) get_option( 'pressocampus_rsa_public_key', '' ) !== '';
-		$rsa_ok   = $has_priv && $has_pub;
+		Installer::maybe_generate_encryption_key();
+		$priv_pem = KeyStore::get_rsa_private_pem();
+		$pub_pem  = KeyStore::get_rsa_public_pem();
+		$rsa_ok   = $priv_pem !== '' && $pub_pem !== '';
 		$checks[] = array(
 			'label'  => 'RSA key pair',
 			'pass'   => $rsa_ok,
-			'detail' => $rsa_ok ? 'Present (just generated if previously missing)' : ( ! $has_priv ? 'FAILED to generate — is PHP OpenSSL working?' : 'Public key missing' ),
+			'detail' => $rsa_ok
+				? sprintf(
+					/* translators: 1: private key source, 2: public key source */
+					__( 'Present — private: %1$s; public: %2$s', 'pressocampus' ),
+					KeyStore::get_rsa_private_source_label(),
+					KeyStore::get_rsa_public_source_label()
+				)
+				: ( $priv_pem === '' ? __( 'FAILED to generate — is PHP OpenSSL working?', 'pressocampus' ) : __( 'Public key missing', 'pressocampus' ) ),
+		);
+
+		$enc_ascii = KeyStore::get_encryption_key_ascii();
+		$enc_ok    = $enc_ascii !== '';
+		$checks[]  = array(
+			'label'  => 'Encryption key (Defuse)',
+			'pass'   => $enc_ok,
+			'detail' => $enc_ok
+				? sprintf(
+					/* translators: %s: key source description */
+					__( 'Present — %s', 'pressocampus' ),
+					KeyStore::get_encryption_source_label()
+				)
+				: __( 'Missing — OAuth encryption cannot initialize', 'pressocampus' ),
 		);
 
 		// 6. Rewrite rules compiled (brain + wp-json)

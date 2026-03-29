@@ -1,11 +1,11 @@
 {
     "name": "pressocampus/pressocampus",
     "description": "Give your AI a permanent memory — stored on your WordPress site, not locked inside any app.",
-    "version": "1.1.1",
+    "version": "1.3.0",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "require": {
-        "php": ">=8.3",
+        "php": ">=8.1",
         "defuse/php-encryption": "^2.3",
         "league/oauth2-server": "^9.3"
     },
@@ -24,7 +24,7 @@
         },
         "optimize-autoloader": true,
         "platform": {
-            "php": "8.3.0"
+            "php": "8.1.0"
         },
         "preferred-install": "dist",
         "sort-packages": true

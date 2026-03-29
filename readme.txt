@@ -3,8 +3,8 @@ Contributors: regionallyfamous
 Tags: ai, memory, mcp, claude, chatgpt
 Requires at least: 6.4
 Tested up to: 6.9
-Stable tag: 1.2.0
-Requires PHP: 8.3
+Stable tag: 1.3.0
+Requires PHP: 8.1
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -53,7 +53,9 @@ Pressocampus implements the open Model Context Protocol (MCP) standard, which le
 
 That's it. Your AI will start building your memory automatically from that point forward.
 
-**Requirements:** PHP 8.3+ and WordPress 6.4+. The `openssl` PHP extension must be active (it is by default on most hosts).
+**Requirements:** PHP 8.1+ and WordPress 6.4+. The `openssl` PHP extension must be active (it is by default on most hosts).
+
+**Security — cryptographic keys:** By default, RSA signing keys and the Defuse encryption key may be stored in the WordPress database. Anyone with database read access (SQL injection elsewhere, leaked backups, shared hosting) can obtain them. For production sites, set keys outside the database: define `PRESSOCAMPUS_RSA_PRIVATE_KEY`, `PRESSOCAMPUS_RSA_PUBLIC_KEY`, and `PRESSOCAMPUS_ENCRYPTION_KEY` in `wp-config.php`, or place PEM/ASCII key files under a non-web-accessible directory and set `PRESSOCAMPUS_KEY_DIR` (see `wp-content/pressocampus-keys/` for the default on-disk layout). Precedence is: wp-config constants, explicit file paths (`PRESSOCAMPUS_RSA_PRIVATE_KEY_FILE`, etc.), `PRESSOCAMPUS_KEY_DIR`, then `wp-content/pressocampus-keys/`, then options. A **persistent object cache** (Redis/Memcached) is strongly recommended — without it, rate limiting falls back to transients stored in `wp_options`, which can add write load under heavy MCP traffic.
 
 == Frequently Asked Questions ==
 
@@ -91,9 +93,20 @@ The Soul is the AI's identity document — written in the AI's own voice, for fu
 
 = Do I need a specific hosting setup? =
 
-Any host running PHP 8.3+ with pretty permalinks enabled will work. The plugin checks your setup automatically and tells you if anything needs attention. If you're on nginx (not Apache), no `.htaccess` changes are needed.
+Any host running PHP 8.1+ with pretty permalinks enabled will work. The plugin checks your setup automatically and tells you if anything needs attention. If you're on nginx (not Apache), no `.htaccess` changes are needed.
 
 == Changelog ==
+
+= 1.3.0 =
+* Added: KeyStore — cryptographic keys can live in wp-config constants, key files under PRESSOCAMPUS_KEY_DIR or wp-content/pressocampus-keys/, with database options as fallback. Defuse encryption key generation on activation; readme documents operator security practices.
+* Added: Virtual MCP resource pressocampus://session-instructions — full tool documentation; initialize returns a short pointer plus meta.instructions_resource_uri to shrink repeated payloads.
+* Added: File-based rate limit counters when no persistent object cache is available (avoids hammering wp_options via transients on every request).
+* Added: docs/ROADMAP.md for future search/dedup and product notes.
+* Changed: REST permission_callback — MCP requires an authenticated user for POST; OAuth routes use a named public callback. OPTIONS/GET on MCP stay open for CORS and 405 probes.
+* Changed: Memory search uses FULLTEXT plus title and first-token recall on excerpt/content (WP_Query s path removed). Uninstall deletes memories in batches of 100.
+* Changed: Minimum PHP is 8.1 (composer, plugin header, CI matrix, PHPCS testVersion).
+* Changed: pressocampus://session-instructions listed in resources/list alongside Session Briefing.
+* Developer: filter pressocampus_remember_dedup_search to skip dedup search on remember when needed.
 
 = 1.2.0 =
 * Added: Soul tab in Settings — read-only soul viewer, character count bar (with green/yellow/red indicators against the 6 KB limit), word count, revisions, last updated, and memory count.

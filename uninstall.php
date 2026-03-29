@@ -26,16 +26,27 @@ function pressocampus_uninstall(): void {
 	// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}pressocampus_oauth_tokens" );
 
-	// Delete all memory posts (CPT). Note: cannot use PRESSOCAMPUS_CPT constant here.
-	$pressocampus_posts = get_posts(
-		array(
-			'post_type'   => 'pressocampus_mem',
-			'numberposts' => -1,
-			'post_status' => 'any',
-		)
-	);
-	foreach ( $pressocampus_posts as $pressocampus_post ) {
-		wp_delete_post( $pressocampus_post->ID, true );
+	// Delete memory posts in batches to avoid loading thousands of rows into PHP memory.
+	do {
+		$ids         = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT ID FROM {$wpdb->posts} WHERE post_type = %s AND post_status IN ('publish','draft','pending','private','future','pressocampus_expired') LIMIT 100",
+				'pressocampus_mem'
+			)
+		);
+		$batch_count = count( $ids );
+		foreach ( $ids as $post_id ) {
+			wp_delete_post( (int) $post_id, true );
+		}
+	} while ( $batch_count === 100 );
+
+	// Remove on-disk keys if present (default layout).
+	$key_dir = rtrim( WP_CONTENT_DIR, '/\\' ) . '/pressocampus-keys';
+	foreach ( array( 'rsa_private.pem', 'rsa_public.pem', 'encryption.key' ) as $file ) {
+		$p = $key_dir . '/' . $file;
+		if ( is_string( $p ) && file_exists( $p ) ) {
+			wp_delete_file( $p );
+		}
 	}
 
 	// Delete dynamic per-client expiry notice options (keyed by client ID).

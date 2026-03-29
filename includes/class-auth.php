@@ -263,7 +263,7 @@ class Auth {
 	private function validate_with_direct_resource_server( string $bearer_token ): mixed {
 		// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		error_log( 'Pressocampus: Auth fallback path used — OAuthServer was not injected before a Bearer token arrived. This may indicate a plugin load-order issue or a failed dependency injection.' );
-		$public_key_pem = (string) get_option( 'pressocampus_rsa_public_key', '' );
+		$public_key_pem = KeyStore::get_rsa_public_pem();
 		if ( $public_key_pem === '' ) {
 			return self::unauthorized_error( 'pressocampus_token_invalid', 'Invalid or expired token.' );
 		}

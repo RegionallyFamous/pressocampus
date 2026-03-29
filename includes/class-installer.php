@@ -8,6 +8,8 @@
 
 namespace Pressocampus;
 
+use Defuse\Crypto\Key;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -15,9 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Installer {
 
 	public static function activate(): void {
-		if ( version_compare( PHP_VERSION, '8.3', '<' ) ) {
+		if ( version_compare( PHP_VERSION, '8.1', '<' ) ) {
 			deactivate_plugins( plugin_basename( PRESSOCAMPUS_PLUGIN_FILE ) );
-			wp_die( esc_html__( 'Pressocampus requires PHP 8.3 or higher.', 'pressocampus' ) );
+			wp_die( esc_html__( 'Pressocampus requires PHP 8.1 or higher.', 'pressocampus' ) );
 		}
 
 		global $wp_version;
@@ -38,6 +40,7 @@ class Installer {
 		}
 
 		self::maybe_generate_rsa_keys();
+		self::maybe_generate_encryption_key();
 
 		self::run_migrations();
 
@@ -90,7 +93,7 @@ class Installer {
 			return;
 		}
 
-		if ( get_option( 'pressocampus_rsa_private_key' ) ) {
+		if ( KeyStore::get_rsa_private_pem() !== '' ) {
 			return;
 		}
 
@@ -104,8 +107,7 @@ class Installer {
 		if ( $res && openssl_pkey_export( $res, $private_key ) && $private_key !== '' ) {
 			$public_key_details = openssl_pkey_get_details( $res );
 			if ( is_array( $public_key_details ) && isset( $public_key_details['key'] ) ) {
-				update_option( 'pressocampus_rsa_private_key', $private_key );
-				update_option( 'pressocampus_rsa_public_key', $public_key_details['key'] );
+				KeyStore::persist_rsa_pair( $private_key, $public_key_details['key'] );
 			}
 		} else {
 			update_option(
@@ -113,6 +115,19 @@ class Installer {
 				'Failed to generate or export RSA key pair. OAuth will not work until this is resolved. Check that the openssl extension is available.'
 			);
 		}
+	}
+
+	/**
+	 * Create Defuse encryption key if none exists (OAuth refresh/auth code encryption).
+	 */
+	public static function maybe_generate_encryption_key(): void {
+		if ( KeyStore::get_encryption_key_ascii() !== '' ) {
+			return;
+		}
+
+		$key   = Key::createNewRandomKey();
+		$ascii = $key->saveToAsciiSafeString();
+		KeyStore::persist_encryption_key_ascii( $ascii );
 	}
 
 	public static function run_migrations(): void {

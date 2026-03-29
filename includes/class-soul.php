@@ -552,9 +552,9 @@ SOUL;
 	}
 
 	public function send_update_notice( int $user_id ): void {
-		$user        = get_userdata( $user_id );
-		$display     = ( $user instanceof \WP_User ) ? $user->display_name : (string) $user_id;
-		$to_email    = ( $user instanceof \WP_User ) ? $user->user_email : (string) get_option( 'admin_email' );
+		$user     = get_userdata( $user_id );
+		$display  = ( $user instanceof \WP_User ) ? $user->display_name : (string) $user_id;
+		$to_email = ( $user instanceof \WP_User ) ? $user->user_email : (string) get_option( 'admin_email' );
 
 		$sent = wp_mail(
 			$to_email,
@@ -627,20 +627,17 @@ SOUL;
 		$post_ids      = array_column( $all_rows, 'ID' );
 		$terms_by_post = array();
 		if ( ! empty( $post_ids ) ) {
-			$placeholders = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
+			$in_list = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+			$term_sql  = 'SELECT tr.object_id, t.slug
+					   FROM ' . $wpdb->term_relationships . ' tr
+					   JOIN ' . $wpdb->term_taxonomy . ' tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+					   JOIN ' . $wpdb->terms . ' t           ON t.term_id          = tt.term_id
+					  WHERE tr.object_id IN (' . $in_list . ')
+					    AND tt.taxonomy  = %s';
 			$term_rows = $wpdb->get_results(
-				// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$wpdb->prepare(
-					"SELECT tr.object_id, t.slug
-					   FROM {$wpdb->term_relationships} tr
-					   JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
-					   JOIN {$wpdb->terms} t           ON t.term_id          = tt.term_id
-					  WHERE tr.object_id IN ({$placeholders})
-					    AND tt.taxonomy  = %s",
-					// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-					array_merge( $post_ids, array( PRESSOCAMPUS_TAXONOMY ) )
-				)
+				// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared -- IN list built from %d placeholders above.
+				$wpdb->prepare( $term_sql, array_merge( $post_ids, array( PRESSOCAMPUS_TAXONOMY ) ) )
 			);
 			if ( is_array( $term_rows ) ) {
 				foreach ( $term_rows as $term_row ) {

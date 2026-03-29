@@ -51,7 +51,7 @@ class OAuthServer {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'handle_register' ),
-				'permission_callback' => '__return_true',
+				'permission_callback' => array( $this, 'permission_oauth_public' ),
 			)
 		);
 
@@ -62,12 +62,12 @@ class OAuthServer {
 				array(
 					'methods'             => 'GET',
 					'callback'            => array( $this, 'handle_authorize_form' ),
-					'permission_callback' => '__return_true',
+					'permission_callback' => array( $this, 'permission_oauth_public' ),
 				),
 				array(
 					'methods'             => 'POST',
 					'callback'            => array( $this, 'handle_authorize_submit' ),
-					'permission_callback' => '__return_true',
+					'permission_callback' => array( $this, 'permission_oauth_public' ),
 				),
 			)
 		);
@@ -78,9 +78,17 @@ class OAuthServer {
 			array(
 				'methods'             => 'POST',
 				'callback'            => array( $this, 'handle_token' ),
-				'permission_callback' => '__return_true',
+				'permission_callback' => array( $this, 'permission_oauth_public' ),
 			)
 		);
+	}
+
+	/**
+	 * OAuth authorization and token endpoints must be reachable without a Bearer token
+	 * (RFC 6749). Authentication is enforced inside each handler.
+	 */
+	public function permission_oauth_public(): bool {
+		return true;
 	}
 
 	// /.well-known/oauth-authorization-server  +  /brain/oauth/* bypass
@@ -700,8 +708,8 @@ class OAuthServer {
 			return $this->authorization_server;
 		}
 
-		$private_key_pem = (string) get_option( 'pressocampus_rsa_private_key', '' );
-		$public_key_pem  = (string) get_option( 'pressocampus_rsa_public_key', '' );
+		$private_key_pem = KeyStore::get_rsa_private_pem();
+		$public_key_pem  = KeyStore::get_rsa_public_pem();
 
 		// Auto-generate the RSA key pair if it was never created (e.g. activation
 		// ran on a server that lacked OpenSSL, which is now fixed).
@@ -717,18 +725,27 @@ class OAuthServer {
 				$details = openssl_pkey_get_details( $res );
 				if ( is_array( $details ) && isset( $details['key'] ) ) {
 					$public_key_pem = $details['key'];
-					update_option( 'pressocampus_rsa_private_key', $private_key_pem );
-					update_option( 'pressocampus_rsa_public_key', $public_key_pem );
+					KeyStore::persist_rsa_pair( $private_key_pem, $public_key_pem );
 				}
 			}
 		}
 
-		$enc_key_ascii = (string) get_option( 'pressocampus_encryption_key', '' );
+		if ( $public_key_pem === '' && $private_key_pem !== '' && extension_loaded( 'openssl' ) ) {
+			$res = openssl_pkey_get_private( $private_key_pem );
+			if ( $res ) {
+				$details = openssl_pkey_get_details( $res );
+				if ( is_array( $details ) && isset( $details['key'] ) ) {
+					$public_key_pem = $details['key'];
+				}
+			}
+		}
+
+		$enc_key_ascii = KeyStore::get_encryption_key_ascii();
 
 		if ( $enc_key_ascii === '' ) {
 			$enc_key       = Key::createNewRandomKey();
 			$enc_key_ascii = $enc_key->saveToAsciiSafeString();
-			update_option( 'pressocampus_encryption_key', $enc_key_ascii, false );
+			KeyStore::persist_encryption_key_ascii( $enc_key_ascii );
 		} else {
 			$enc_key = Key::loadFromAsciiSafeString( $enc_key_ascii );
 		}
@@ -772,7 +789,7 @@ class OAuthServer {
 			return $this->resource_server;
 		}
 
-		$public_key_pem   = (string) get_option( 'pressocampus_rsa_public_key', '' );
+		$public_key_pem   = KeyStore::get_rsa_public_pem();
 		$public_crypt_key = new CryptKey( $public_key_pem, null, false );
 
 		$this->resource_server = new ResourceServer(

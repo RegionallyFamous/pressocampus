@@ -117,137 +117,111 @@ class ResourceIndex {
 	/**
 	 * Search memories for a user.
 	 *
-	 * Runs two sub-searches and merges them:
-	 *   1. WP_Query full-text search (post title / content)
-	 *   2. LIKE search on the excerpt column of the index table
+	 * Uses FULLTEXT on the index excerpt (InnoDB) when the query is long enough;
+	 * otherwise LIKE on excerpt and title. Title matches avoid scanning full post
+	 * content (unlike WP_Query's default search).
 	 *
 	 * Returns array of rows: [uri, post_id, name, excerpt, confidence, priority, updated_at]
-	 * ordered by priority DESC, sorted by relevance.
+	 * ordered by priority DESC, sorted by recency.
 	 */
 	public function search( string $query, int $user_id, ?string $group = null, int $limit = 10 ): array {
 		global $wpdb;
 
 		$results = array();
 
-		// WP_Query full-text search.
-		$wp_query_args = array(
-			's'              => $query,
-			'post_type'      => PRESSOCAMPUS_CPT,
-			'author'         => $user_id,
-			'post_status'    => 'publish',
-			'posts_per_page' => $limit,
-			'no_found_rows'  => true,
-			'fields'         => 'ids',
-		);
+		$like_sub = '%' . $wpdb->esc_like( $query ) . '%';
 
-		if ( $group !== null ) {
-			$wp_query_args['tax_query'] = array(
-				array(
-					'taxonomy' => PRESSOCAMPUS_TAXONOMY,
-					'field'    => 'slug',
-					'terms'    => sanitize_title( $group ),
-				),
-			);
+		// First significant token (e.g. "Nick") broadens recall so related memories still surface
+		// when FULLTEXT terms differ (dedup / contradiction checks).
+		$token_like = null;
+		if ( preg_match( '/[\p{L}\p{N}]{3,}/u', $query, $m ) ) {
+			$token_like = '%' . $wpdb->esc_like( $m[0] ) . '%';
 		}
 
-		$wp_q = new \WP_Query( $wp_query_args );
-
-		if ( ! empty( $wp_q->posts ) ) {
-			// Prime the postmeta cache so the get_post_meta() calls below
-			// don't each fire a separate DB query (avoids N+1 per result).
-			update_postmeta_cache( $wp_q->posts );
-
-			$placeholders = implode( ',', array_fill( 0, count( $wp_q->posts ), '%d' ) );
-            // phpcs:ignore WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-			$rows = $wpdb->get_results(
-				$wpdb->prepare(
-                    // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-					"SELECT i.post_id, i.uri, i.excerpt, i.content_hash,
-                            p.post_title AS name,
-                            p.post_modified AS updated_at
-                       FROM {$this->table()} i
-                       JOIN {$wpdb->posts} p ON p.ID = i.post_id
-                      WHERE i.post_id IN ($placeholders)",
-					...$wp_q->posts
-				),
-				ARRAY_A
-			);
-
-			foreach ( $rows as $row ) {
-				$priority   = get_post_meta( (int) $row['post_id'], '_pressocampus_annotation_priority', true ) ?: 'normal';
-				$confidence = get_post_meta( (int) $row['post_id'], '_pressocampus_confidence', true ) ?: 'medium';
-
-				$results[ (int) $row['post_id'] ] = array(
-					'uri'        => $row['uri'],
-					'post_id'    => (int) $row['post_id'],
-					'name'       => $row['name'],
-					'excerpt'    => $row['excerpt'],
-					'confidence' => $confidence,
-					'priority'   => $priority,
-					'updated_at' => $row['updated_at'],
-				);
-			}
+		$token_or     = '';
+		$token_params = array();
+		if ( $token_like !== null ) {
+			$token_or     = ' OR p.post_content LIKE %s OR i.excerpt LIKE %s';
+			$token_params = array( $token_like, $token_like );
 		}
 
-		// Excerpt search against the index table.
-		// Use FULLTEXT MATCH/AGAINST when the query is long enough for the InnoDB full-text
-		// minimum word length (3 chars). Fall back to LIKE for very short queries.
+		$group_clause = '';
+		$group_params = array();
+		if ( $group !== null && $group !== '' ) {
+			$slug           = sanitize_title( $group );
+			$group_clause   = " AND EXISTS (
+				SELECT 1 FROM {$wpdb->term_relationships} tr
+				INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id AND tt.taxonomy = %s
+				INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id AND t.slug = %s
+				WHERE tr.object_id = i.post_id
+			)";
+			$group_params[] = PRESSOCAMPUS_TAXONOMY;
+			$group_params[] = $slug;
+		}
+
+		// Single query: FULLTEXT on excerpt, title substring, optional first-token match on content/excerpt.
 		if ( mb_strlen( $query, 'UTF-8' ) >= 3 ) {
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$like_rows = $wpdb->get_results(
-				$wpdb->prepare(
-					"SELECT i.post_id, i.uri, i.excerpt, i.content_hash,
-                            p.post_title AS name,
-                            p.post_modified AS updated_at
-                       FROM {$this->table()} i
-                       JOIN {$wpdb->posts} p ON p.ID = i.post_id
-                      WHERE i.user_id = %d
-                        AND MATCH(i.excerpt) AGAINST(%s IN BOOLEAN MODE)
-                        AND p.post_status = 'publish'
-                      LIMIT %d",
-					$user_id,
-					$query,
-					$limit
-				),
-				ARRAY_A
+			$sql       = "SELECT i.post_id, i.uri, i.excerpt, i.content_hash,
+                           p.post_title AS name,
+                           p.post_modified AS updated_at
+                      FROM {$this->table()} i
+                      JOIN {$wpdb->posts} p ON p.ID = i.post_id
+                     WHERE i.user_id = %d
+                       AND p.post_author = %d
+                       AND p.post_type = %s
+                       AND p.post_status = 'publish'
+                       AND (
+                            MATCH(i.excerpt) AGAINST(%s IN BOOLEAN MODE)
+                         OR p.post_title LIKE %s
+                            $token_or
+                       )
+                       $group_clause
+                     LIMIT %d";
+			$params    = array_merge(
+				array( $user_id, $user_id, PRESSOCAMPUS_CPT, $query, $like_sub ),
+				$token_params,
+				$group_params,
+				array( $limit )
 			);
+			$like_rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		} else {
-			// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			$like_rows = $wpdb->get_results(
-				$wpdb->prepare(
-					"SELECT i.post_id, i.uri, i.excerpt, i.content_hash,
-                            p.post_title AS name,
-                            p.post_modified AS updated_at
-                       FROM {$this->table()} i
-                       JOIN {$wpdb->posts} p ON p.ID = i.post_id
-                      WHERE i.user_id = %d
-                        AND i.excerpt LIKE %s
-                        AND p.post_status = 'publish'
-                      LIMIT %d",
-					$user_id,
-					'%' . $wpdb->esc_like( $query ) . '%',
-					$limit
-				),
-				ARRAY_A
+			$sql       = "SELECT i.post_id, i.uri, i.excerpt, i.content_hash,
+                           p.post_title AS name,
+                           p.post_modified AS updated_at
+                      FROM {$this->table()} i
+                      JOIN {$wpdb->posts} p ON p.ID = i.post_id
+                     WHERE i.user_id = %d
+                       AND p.post_author = %d
+                       AND p.post_type = %s
+                       AND p.post_status = 'publish'
+                       AND (
+                            i.excerpt LIKE %s
+                         OR p.post_title LIKE %s
+                            $token_or
+                       )
+                       $group_clause
+                     LIMIT %d";
+			$params    = array_merge(
+				array( $user_id, $user_id, PRESSOCAMPUS_CPT, $like_sub, $like_sub ),
+				$token_params,
+				$group_params,
+				array( $limit )
 			);
+			$like_rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		}
 
-		// Prime postmeta cache for LIKE results not already seen in the WP_Query pass.
-		$new_like_ids = array_values(
-			array_filter(
-				array_map( fn( array $r ): int => (int) $r['post_id'], $like_rows ),
-				fn( int $id ): bool => ! isset( $results[ $id ] )
-			)
-		);
-		if ( ! empty( $new_like_ids ) ) {
-			update_postmeta_cache( $new_like_ids );
+		if ( empty( $like_rows ) ) {
+			$like_rows = array();
+		}
+
+		$post_ids = array_map( static fn( array $r ): int => (int) $r['post_id'], $like_rows );
+
+		if ( ! empty( $post_ids ) ) {
+			update_postmeta_cache( $post_ids );
 		}
 
 		foreach ( $like_rows as $row ) {
 			$post_id = (int) $row['post_id'];
-			if ( isset( $results[ $post_id ] ) ) {
-				continue; // already present from WP_Query pass
-			}
 
 			$priority   = get_post_meta( $post_id, '_pressocampus_annotation_priority', true ) ?: 'normal';
 			$confidence = get_post_meta( $post_id, '_pressocampus_confidence', true ) ?: 'medium';
